@@ -146,7 +146,7 @@ class WindowsSelectorImpl extends SelectorImpl {
     {
         assert Thread.holdsLock(this);
         this.timeout = timeout; // set selector timeout
-        processUpdateQueue();
+        processUpdateQueue(); // 事件注册
         processDeregisterQueue();
         if (interruptTriggered) {
             resetWakeupSocket();
@@ -164,7 +164,7 @@ class WindowsSelectorImpl extends SelectorImpl {
         try {
             begin();
             try {
-                subSelector.poll();
+                subSelector.poll(); // 发起系统调用
             } catch (IOException e) {
                 finishLock.setException(e); // Save this exception
             }
@@ -177,7 +177,7 @@ class WindowsSelectorImpl extends SelectorImpl {
         // Done with poll(). Set wakeupSocket to nonsignaled  for the next run.
         finishLock.checkForException();
         processDeregisterQueue();
-        int updated = updateSelectedKeys(action);
+        int updated = updateSelectedKeys(action); // 后置处理
         // Done with poll(). Set wakeupSocket to nonsignaled  for the next run.
         resetWakeupSocket();
         return updated;
@@ -198,7 +198,7 @@ class WindowsSelectorImpl extends SelectorImpl {
                     growIfNeeded();
                     channelArray[totalChannels] = ski;
                     ski.setIndex(totalChannels);
-                    pollWrapper.putEntry(totalChannels, ski);
+                    pollWrapper.putEntry(totalChannels, ski); // 真正的写
                     totalChannels++;
                     MapEntry previous = fdMap.put(ski);
                     assert previous == null;
@@ -407,7 +407,7 @@ class WindowsSelectorImpl extends SelectorImpl {
                     continue;
                 }
 
-                int updated = processReadyEvents(rOps, sk, action);
+                int updated = processReadyEvents(rOps, sk, action); // 熟悉的父类的方法
                 if (updated > 0 && me.updateCount != updateCount) {
                     me.updateCount = updateCount;
                     numKeysUpdated++;

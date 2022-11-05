@@ -109,7 +109,7 @@ Java_sun_nio_ch_WindowsSelectorImpl_00024SubSelector_poll0(JNIEnv *env, jobject 
     writefds.fd_count = write_count;
     exceptfds.fd_count = except_count;
 
-    /* Call select */
+    /* Call select */ // select系统调用
     if ((result = select(0 , &readfds, &writefds, &exceptfds, tv))
                                                              == SOCKET_ERROR) {
         /* Bad error - this should not happen frequently */
