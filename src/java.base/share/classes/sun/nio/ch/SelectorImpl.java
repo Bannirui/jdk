@@ -64,8 +64,8 @@ abstract class SelectorImpl
 
     protected SelectorImpl(SelectorProvider sp) {
         super(sp);
-        keys = ConcurrentHashMap.newKeySet();
-        selectedKeys = new HashSet<>();
+        keys = ConcurrentHashMap.newKeySet(); // 向复用器注册进来的事件(事件本身+需要关注事件的状态)
+        selectedKeys = new HashSet<>(); // 状态就绪的事件
         publicKeys = Collections.unmodifiableSet(keys);
         publicSelectedKeys = Util.ungrowableSet(selectedKeys);
     }

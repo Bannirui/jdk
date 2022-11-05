@@ -46,12 +46,12 @@ class EPoll {
      *  } epoll_data_t;
      *
      * struct epoll_event {
-     *     __uint32_t events;
+     *     __uint32_t events; // 发生的事件类型
      *     epoll_data_t data;
      * }
      */
     private static final int SIZEOF_EPOLLEVENT   = eventSize();
-    private static final int OFFSETOF_EVENTS     = eventsOffset();
+    private static final int OFFSETOF_EVENTS     = eventsOffset(); // epoll_event结构体中events阈的指针偏移量
     private static final int OFFSETOF_FD         = dataOffset();
 
     // opcodes
@@ -97,8 +97,8 @@ class EPoll {
     /**
      * Returns event->events
      */
-    static int getEvents(long eventAddress) {
-        return unsafe.getInt(eventAddress + OFFSETOF_EVENTS);
+    static int getEvents(long eventAddress) { // eventAddress=epoll_event的实例指针
+        return unsafe.getInt(eventAddress + OFFSETOF_EVENTS); // 根据指针偏移量 获取epoll_event中events这个阈的值 也就是epoll_event一个事件中fd发生的事件类型
     }
 
     // -- Native methods --
@@ -114,7 +114,7 @@ class EPoll {
     static native int ctl(int epfd, int opcode, int fd, int events);
 
     static native int wait(int epfd, long pollAddress, int numfds, int timeout)
-        throws IOException;
+        throws IOException; // epfd=epoll实例 那些已经注册epoll的事件中 多少个已经处于就绪状态 将数量返回(该结果数量上限为numfds) 并将这些就绪的事件epoll_event放在pollAddress指向的内存区域上
 
     static {
         IOUtil.load();

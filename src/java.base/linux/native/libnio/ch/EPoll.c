@@ -56,9 +56,9 @@ Java_sun_nio_ch_EPoll_dataOffset(JNIEnv* env, jclass clazz)
 }
 
 JNIEXPORT jint JNICALL
-Java_sun_nio_ch_EPoll_create(JNIEnv *env, jclass clazz) {
+Java_sun_nio_ch_EPoll_create(JNIEnv *env, jclass clazz) { // 创建epoll实例
     /* size hint not used in modern kernels */
-    int epfd = epoll_create(256);
+    int epfd = epoll_create(256); // 系统调用
     if (epfd < 0) {
         JNU_ThrowIOExceptionWithLastError(env, "epoll_create failed");
     }
@@ -68,23 +68,23 @@ Java_sun_nio_ch_EPoll_create(JNIEnv *env, jclass clazz) {
 JNIEXPORT jint JNICALL
 Java_sun_nio_ch_EPoll_ctl(JNIEnv *env, jclass clazz, jint epfd,
                           jint opcode, jint fd, jint events)
-{
+{ // 向epoll实例进行opcode(添加 移除...)一个事件 该事件关注fd的events状态
     struct epoll_event event;
     int res;
 
     event.events = events;
     event.data.fd = fd;
 
-    res = epoll_ctl(epfd, (int)opcode, (int)fd, &event);
+    res = epoll_ctl(epfd, (int)opcode, (int)fd, &event); // 系统调用
     return (res == 0) ? 0 : errno;
 }
 
 JNIEXPORT jint JNICALL
 Java_sun_nio_ch_EPoll_wait(JNIEnv *env, jclass clazz, jint epfd,
                            jlong address, jint numfds, jint timeout)
-{
+{ // epfd=epoll实例 那些已经注册epoll的事件中 多少个已经处于就绪状态 将数量返回(该结果数量上限为numfds) 并将这些就绪的事件epoll_event放在address指向的内存区域上
     struct epoll_event *events = jlong_to_ptr(address);
-    int res = epoll_wait(epfd, events, numfds, timeout);
+    int res = epoll_wait(epfd, events, numfds, timeout); // 一次系统调用 epfd=epoll实例 那些已经注册epoll的事件中 多少个已经处于就绪状态 将数量返回(该结果数量上限为numfds) 并将这些就绪的事件epoll_event放在events指向的内存区域上
     if (res < 0) {
         if (errno == EINTR) {
             return IOS_INTERRUPTED;

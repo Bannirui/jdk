@@ -74,15 +74,15 @@ class EPollSelectorImpl extends SelectorImpl {
     private boolean interruptTriggered;
 
     EPollSelectorImpl(SelectorProvider sp) throws IOException {
-        super(sp);
+        super(sp); // 定义了两个集合 一个存放注册到复用器的Channel(事件+需要关注的事件状态) 另一个存放状态就绪的事件
 
-        this.epfd = EPoll.create();
-        this.pollArrayAddress = EPoll.allocatePollArray(NUM_EPOLLEVENTS);
+        this.epfd = EPoll.create(); // 创建epoll实例
+        this.pollArrayAddress = EPoll.allocatePollArray(NUM_EPOLLEVENTS); // 开辟一片内存存放那些OS系统调用结果(哪些Channel状态就绪了)
 
         try {
-            long fds = IOUtil.makePipe(false);
-            this.fd0 = (int) (fds >>> 32);
-            this.fd1 = (int) fds;
+            long fds = IOUtil.makePipe(false); // 高32位存放可读fd 低32位存放可写fd
+            this.fd0 = (int) (fds >>> 32); // 可读fd
+            this.fd1 = (int) fds; // 可写fd
         } catch (IOException ioe) {
             EPoll.freePollArray(pollArrayAddress);
             FileDispatcherImpl.closeIntFD(epfd);
@@ -90,7 +90,7 @@ class EPollSelectorImpl extends SelectorImpl {
         }
 
         // register one end of the socket pair for wakeups
-        EPoll.ctl(epfd, EPOLL_CTL_ADD, fd0, EPOLLIN);
+        EPoll.ctl(epfd, EPOLL_CTL_ADD, fd0, EPOLLIN); // 向epoll实例添加一个事件 关注fd0可读状态
     }
 
     private void ensureOpen() {
@@ -110,14 +110,14 @@ class EPollSelectorImpl extends SelectorImpl {
         boolean timedPoll = (to > 0);
 
         int numEntries;
-        processUpdateQueue();
+        processUpdateQueue(); // 向内核注册事件(哪些Channel的什么事件) 可能是新增 可能是移除 也可能是覆盖更新
         processDeregisterQueue();
         try {
             begin(blocking);
 
-            do {
+            do { // 在超时时段内 如果因为系统调用线程中断 就继续尝试到超时
                 long startTime = timedPoll ? System.nanoTime() : 0;
-                numEntries = EPoll.wait(epfd, pollArrayAddress, NUM_EPOLLEVENTS, to);
+                numEntries = EPoll.wait(epfd, pollArrayAddress, NUM_EPOLLEVENTS, to); // epfd=epoll实例 那些已经注册epoll的事件中 多少个已经处于就绪状态 将数量返回(该结果数量上限为NUM_EPOLLEVENTS) 并将这些就绪的事件epoll_event放在pollArrayAddress指向的内存区域上
                 if (numEntries == IOStatus.INTERRUPTED && timedPoll) {
                     // timed poll interrupted so need to adjust timeout
                     long adjust = System.nanoTime() - startTime;
@@ -134,7 +134,7 @@ class EPollSelectorImpl extends SelectorImpl {
             end(blocking);
         }
         processDeregisterQueue();
-        return processEvents(numEntries, action);
+        return processEvents(numEntries, action); // 后置处理 内核有numEntries个Channel发生了事件 从中筛选出客户端关注的有多少个
     }
 
     /**
@@ -161,7 +161,7 @@ class EPollSelectorImpl extends SelectorImpl {
                         } else {
                             if (registeredEvents == 0) {
                                 // add to epoll
-                                EPoll.ctl(epfd, EPOLL_CTL_ADD, fd, newEvents);
+                                EPoll.ctl(epfd, EPOLL_CTL_ADD, fd, newEvents); // 向OS内核注册事件
                             } else {
                                 // modify events
                                 EPoll.ctl(epfd, EPOLL_CTL_MOD, fd, newEvents);
@@ -180,21 +180,21 @@ class EPollSelectorImpl extends SelectorImpl {
      */
     private int processEvents(int numEntries, Consumer<SelectionKey> action)
         throws IOException
-    {
+    { // 后置处理 内核有numEntries个Channel发生了事件 其中numKeysUpdated个是客户端关注的
         assert Thread.holdsLock(this);
 
         boolean interrupted = false;
         int numKeysUpdated = 0;
         for (int i=0; i<numEntries; i++) {
-            long event = EPoll.getEvent(pollArrayAddress, i);
+            long event = EPoll.getEvent(pollArrayAddress, i); // 通过指针偏移方式寻址 本质就是轮询数组元素 每个元素就是状态就绪的Channel事件
             int fd = EPoll.getDescriptor(event);
             if (fd == fd0) {
                 interrupted = true;
             } else {
-                SelectionKeyImpl ski = fdToKey.get(fd);
+                SelectionKeyImpl ski = fdToKey.get(fd); // 从映射缓存中匹配出SelectionKey(Channel+复用器)
                 if (ski != null) {
-                    int rOps = EPoll.getEvents(event);
-                    numKeysUpdated += processReadyEvents(rOps, ski, action);
+                    int rOps = EPoll.getEvents(event); // 事件发生的类型
+                    numKeysUpdated += processReadyEvents(rOps, ski, action); // 父类方法
                 }
             }
         }
