@@ -36,12 +36,12 @@ JNIEXPORT jint JNICALL
 Java_sun_nio_ch_PollSelectorImpl_poll(JNIEnv *env, jclass clazz,
                                       jlong address, jint numfds,
                                       jint timeout)
-{
+{ // address=待监听的Channel集合地址 numfds=监听多少个
     struct pollfd *a;
     int res;
 
-    a = (struct pollfd *) jlong_to_ptr(address);
-    res = poll(a, numfds, timeout);
+    a = (struct pollfd *) jlong_to_ptr(address); // 数组首地址
+    res = poll(a, numfds, timeout); // 系统调用
     if (res < 0) {
         if (errno == EINTR) {
             return IOS_INTERRUPTED;
@@ -50,6 +50,6 @@ Java_sun_nio_ch_PollSelectorImpl_poll(JNIEnv *env, jclass clazz,
             return IOS_THROWN;
         }
     }
-    return (jint) res;
+    return (jint) res; // 在numfds个Channel中 res个事件就绪
 }
 
