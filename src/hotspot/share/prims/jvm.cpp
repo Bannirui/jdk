@@ -2852,13 +2852,13 @@ static void thread_entry(JavaThread* thread, TRAPS) {
                           SystemDictionary::Thread_klass(),
                           vmSymbols::run_method_name(),
                           vmSymbols::void_method_signature(),
-                          THREAD);
+                          THREAD); // 线程被调度后要回调Java中的方法(Runnable的run方法)
 }
 
 
 JVM_ENTRY(void, JVM_StartThread(JNIEnv* env, jobject jthread))
   JVMWrapper("JVM_StartThread");
-  JavaThread *native_thread = NULL;
+  JavaThread *native_thread = NULL; // cpp级别的线程 里面封装了OS的线程
 
   // We cannot hold the Threads_lock when we throw an exception,
   // due to rank ordering issues. Example:  we might need to grab the
@@ -2893,7 +2893,7 @@ JVM_ENTRY(void, JVM_StartThread(JNIEnv* env, jobject jthread))
       //  - Avoid passing negative values which would result in really large stacks.
       NOT_LP64(if (size > SIZE_MAX) size = SIZE_MAX;)
       size_t sz = size > 0 ? (size_t) size : 0;
-      native_thread = new JavaThread(&thread_entry, sz);
+      native_thread = new JavaThread(&thread_entry, sz); // 发生一次系统调用pthread_create 告知OS创建新的线程要执行的函数(thread_entry) 将OS线程封装在cpp线程中
 
       // At this point it may be possible that no osthread was created for the
       // JavaThread due to lack of memory. Check for this situation and throw

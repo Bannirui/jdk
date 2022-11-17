@@ -641,7 +641,7 @@ static uint64_t locate_unique_thread_id(mach_port_t mach_thread_port) {
 #endif
 
 // Thread start routine for all newly created threads
-static void *thread_native_entry(Thread *thread) {
+static void *thread_native_entry(Thread *thread) { // thread=Cpp线程 初始化的时候封装了要回调执行的Java函数 pthread_create创建线程之后又封装了OS线程 OS线程被CPU调度后执行pthread_create创建时候定义好的执行函数
   // Try to randomize the cache line index of hot stack frames.
   // This helps when threads of the same stack traces evict each other's
   // cache lines. The threads can be either from the same JVM instance, or
@@ -694,7 +694,7 @@ static void *thread_native_entry(Thread *thread) {
   }
 
   // call one more level start routine
-  thread->run();
+  thread->run(); // thread是Cpp线程 构造完就赋值了要回调的Java代码 现在触发回调逻辑
 
   log_info(os, thread)("Thread finished (tid: " UINTX_FORMAT ", pthread id: " UINTX_FORMAT ").",
     os::current_thread_id(), (uintx) pthread_self());
@@ -712,11 +712,11 @@ static void *thread_native_entry(Thread *thread) {
 }
 
 bool os::create_thread(Thread* thread, ThreadType thr_type,
-                       size_t req_stack_size) {
+                       size_t req_stack_size) { // thread=Cpp级别的线程 封装着要回调的Java方法(Runnable的run方法) 就是OS系统创建的线程需要执行的函数的实参 调用pthread_create系统调用 将OS线程设置到thread中
   assert(thread->osthread() == NULL, "caller responsible");
 
   // Allocate the OSThread object
-  OSThread* osthread = new OSThread(NULL, NULL);
+  OSThread* osthread = new OSThread(NULL, NULL); // 封装OS系统的线程 里面包裹着真正的线程
   if (osthread == NULL) {
     return false;
   }
@@ -727,10 +727,10 @@ bool os::create_thread(Thread* thread, ThreadType thr_type,
   // Initial state is ALLOCATED but not INITIALIZED
   osthread->set_state(ALLOCATED);
 
-  thread->set_osthread(osthread);
+  thread->set_osthread(osthread); // osthread中维护着真正的系统级别线程的id
 
   // init thread attributes
-  pthread_attr_t attr;
+  pthread_attr_t attr; // pthread_create系统调用创建线程需要指定线程属性 为空就使用默认 线程创建好后再修改属性线程不受影响
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
@@ -742,8 +742,8 @@ bool os::create_thread(Thread* thread, ThreadType thr_type,
   ThreadState state;
 
   {
-    pthread_t tid;
-    int ret = pthread_create(&tid, &attr, (void* (*)(void*)) thread_native_entry, thread);
+    pthread_t tid; // pthread_create系统调用创建好线程的id
+    int ret = pthread_create(&tid, &attr, (void* (*)(void*)) thread_native_entry, thread); // pthread_create系统调用创建线程成功返回0 thread_native_entry=新建线程要执行的函数 thread=thread_native_entry函数的的实参
 
     char buf[64];
     if (ret == 0) {
@@ -764,7 +764,7 @@ bool os::create_thread(Thread* thread, ThreadType thr_type,
     }
 
     // Store pthread info into the OSThread
-    osthread->set_pthread_id(tid);
+    osthread->set_pthread_id(tid); // 将OS线程设置给osthread thread中持有osthread 这时候thread也就设置好了OS线程
 
     // Wait until child thread is either initialized or aborted
     {
@@ -839,8 +839,8 @@ bool os::create_attached_thread(JavaThread* thread) {
   return true;
 }
 
-void os::pd_start_thread(Thread* thread) {
-  OSThread * osthread = thread->osthread();
+void os::pd_start_thread(Thread* thread) { // Cpp线程(封装着OS线程+Java要回调的方法)
+  OSThread * osthread = thread->osthread(); // OS线程
   assert(osthread->get_state() != INITIALIZED, "just checking");
   Monitor* sync_with_child = osthread->startThread_lock();
   MutexLockerEx ml(sync_with_child, Mutex::_no_safepoint_check_flag);

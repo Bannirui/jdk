@@ -460,11 +460,11 @@ void Thread::set_priority(Thread* thread, ThreadPriority priority) {
 }
 
 
-void Thread::start(Thread* thread) {
+void Thread::start(Thread* thread) { // thread是Cpp线程 封装着OS的线程 Java要线程执行的回调
   // Start is different from resume in that its safety is guaranteed by context or
   // being called from a Java method synchronized on the Thread object.
   if (!DisableStartThread) {
-    if (thread->is_Java_thread()) {
+    if (thread->is_Java_thread()) { // true
       // Initialize the thread state to RUNNABLE before starting this thread.
       // Can not set it after the thread started because we do not know the
       // exact thread state at that time. It could be in MONITOR_WAIT or
@@ -1621,16 +1621,16 @@ static void compiler_thread_entry(JavaThread* thread, TRAPS);
 static void sweeper_thread_entry(JavaThread* thread, TRAPS);
 
 JavaThread::JavaThread(ThreadFunction entry_point, size_t stack_sz) :
-                       Thread() {
+                       Thread() { // Cpp级别的线程封装 entry_point新线程被调度起来要执行的函数(Java中Thread的run方法)
   initialize();
   _jni_attach_state = _not_attaching_via_jni;
-  set_entry_point(entry_point);
+  set_entry_point(entry_point); // 设置Cpp线程要回调的方法(定义在Java中Runnable的run方法)
   // Create the native thread itself.
   // %note runtime_23
   os::ThreadType thr_type = os::java_thread;
   thr_type = entry_point == &compiler_thread_entry ? os::compiler_thread :
                                                      os::java_thread;
-  os::create_thread(this, thr_type, stack_sz);
+  os::create_thread(this, thr_type, stack_sz); // 发生一次系统调用pthread_create 将entry_point要新建线程开始执行的函数传给了OS 将OS系统级别的线程设置在os_thread中
   // The _osthread may be NULL here because we ran out of memory (too many threads active).
   // We need to throw and OutOfMemoryError - however we cannot do this here because the caller
   // may hold a lock and all locks must be unlocked before throwing the exception (throwing
@@ -1690,7 +1690,7 @@ JavaThread::~JavaThread() {
 
 
 // The first routine called by a new Java thread
-void JavaThread::run() {
+void JavaThread::run() { // Cpp线程的run方法
   // initialize thread-local alloc buffer related fields
   this->initialize_tlab();
 
@@ -1729,7 +1729,7 @@ void JavaThread::run() {
 
   // We call another function to do the rest so we are sure that the stack addresses used
   // from there will be lower than the stack base just computed
-  thread_main_inner();
+  thread_main_inner(); // 在thread_main_inner()方法中回调Java的Thread定义的run方法
 
   // Note, thread is no longer valid at this point!
 }
@@ -1749,7 +1749,7 @@ void JavaThread::thread_main_inner() {
       this->set_native_thread_name(this->get_thread_name());
     }
     HandleMark hm(this);
-    this->entry_point()(this, this);
+    this->entry_point()(this, this); // JavaThread是Cpp级别的线程 封装了线程回调Java的逻辑 现在触发回调
   }
 
   DTRACE_THREAD_PROBE(stop, this);

@@ -863,7 +863,7 @@ class CompilerThread;
 
 typedef void (*ThreadFunction)(JavaThread*, TRAPS);
 
-class JavaThread: public Thread {
+class JavaThread: public Thread { // Cpp级别线程
   friend class VMStructs;
   friend class JVMCIVMStructs;
   friend class WhiteBox;
@@ -896,7 +896,7 @@ class JavaThread: public Thread {
 
   JavaFrameAnchor _anchor;                       // Encapsulation of current java frame and it state
 
-  ThreadFunction _entry_point;
+  ThreadFunction _entry_point; // 新创建的Cpp线程要执行的函数(也就是定义在Java中的Runnable中的run方法)
 
   JNIEnv        _jni_environment;
 

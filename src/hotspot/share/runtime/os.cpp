@@ -854,10 +854,10 @@ int os::random() {
 // to do so in a context in which races are impossible, or should do appropriate
 // locking.
 
-void os::start_thread(Thread* thread) {
+void os::start_thread(Thread* thread) { // Cpp线程(封装着OS线程+Java要回调的方法)
   // guard suspend/resume
   MutexLockerEx ml(thread->SR_lock(), Mutex::_no_safepoint_check_flag);
-  OSThread* osthread = thread->osthread();
+  OSThread* osthread = thread->osthread(); // OS线程
   osthread->set_state(RUNNABLE);
   pd_start_thread(thread);
 }
