@@ -112,13 +112,16 @@ public abstract class AbstractExecutorService implements ExecutorService {
      * @throws RejectedExecutionException {@inheritDoc}
      * @throws NullPointerException       {@inheritDoc}
      */
+    /**
+     * 提交任务到线程池
+     *     - 任务提交线程只负责将任务提交给线程池 不关注任务的执行结果
+     *     - 线程池通过异步编程方式立即返回FutureTask给任务提交线程
+     *     - 线程池中有任务执行线程对任务的执行过程负责 任务执行完通过回调方式通知结果
+     */
     public Future<?> submit(Runnable task) {
         if (task == null) throw new NullPointerException();
-        RunnableFuture<Void> ftask = newTaskFor(task, null);
-        /**
-         * 
-         */
-        execute(ftask);
+        RunnableFuture<Void> ftask = newTaskFor(task, null); // 实现是FutureTask
+        this.execute(ftask); // 任务提交线程只负责将任务交给线程池 任务执行由线程池关注
         return ftask;
     }
 
