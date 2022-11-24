@@ -185,6 +185,11 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
          *         the caller can distinguish which of these occurred
          *         by checking Thread.interrupted.
          */
+        /**
+         * 抽象里面就一个方法 通过e是不是null判定线程是put线程还是take线程
+         *     - e有值 put线程
+         *     - e为null take线程
+         */
         abstract E transfer(E e, boolean timed, long nanos);
     }
 
@@ -223,22 +228,22 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
 
         /* Modes for SNodes, ORed together in node fields */
         /** Node represents an unfulfilled consumer */
-        static final int REQUEST    = 0;
+        static final int REQUEST    = 0; // 请求交易还没匹配的消费者
         /** Node represents an unfulfilled producer */
-        static final int DATA       = 1;
+        static final int DATA       = 1; // 请求交易还没交付的生产者
         /** Node is fulfilling another unfulfilled DATA or REQUEST */
-        static final int FULFILLING = 2;
+        static final int FULFILLING = 2; // 正在交易的生产者或者消费者
 
         /** Returns true if m has fulfilling bit set. */
         static boolean isFulfilling(int m) { return (m & FULFILLING) != 0; }
 
         /** Node class for TransferStacks. */
         static final class SNode {
-            volatile SNode next;        // next node in stack
-            volatile SNode match;       // the node matched to this
-            volatile Thread waiter;     // to control park/unpark
-            Object item;                // data; or null for REQUESTs
-            int mode;
+            volatile SNode next;        // next node in stack // 下一节点
+            volatile SNode match;       // the node matched to this // 与当前节点匹配的节点
+            volatile Thread waiter;     // to control park/unpark // 节点上的线程
+            Object item;                // data; or null for REQUESTs // 交易的数据
+            int mode; // 节点状态
             // Note: item and mode fields don't need to be volatile
             // since they are always written before, and read after,
             // other volatile/atomic operations.
@@ -262,11 +267,11 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
              */
             boolean tryMatch(SNode s) {
                 if (match == null &&
-                    SMATCH.compareAndSet(this, null, s)) {
-                    Thread w = waiter;
+                    SMATCH.compareAndSet(this, null, s)) { // 节点还没match对象 尝试将match对象设置为s
+                    Thread w = waiter; // 节点上阻塞的线程
                     if (w != null) {    // waiters need at most one unpark
                         waiter = null;
-                        LockSupport.unpark(w);
+                        LockSupport.unpark(w); // 一旦跟节点匹配成功并且自己还有线程阻塞着 现在匹配成功了 线程可以唤醒了
                     }
                     return true;
                 }
@@ -299,7 +304,7 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
         }
 
         /** The head (top) of the stack */
-        volatile SNode head;
+        volatile SNode head; // head指针指向后来居上的节点 相当于head指向的是栈顶元素 顺着节点的next指针方向就是栈底
 
         boolean casHead(SNode h, SNode nh) {
             return h == head &&
@@ -322,6 +327,23 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
 
         /**
          * Puts or takes an item.
+         */
+        /**
+         * 通过e是不是null判定线程是put线程还是take线程
+         *     - e有值 put线程
+         *     - e为null take线程
+         * 不管是put还是take都会将其数据(e或者null)封装为节点放到栈上 移动head指针模拟出元素入栈
+         * 通过节点中的mode不同体现出职责
+         *     - put的mode是data
+         *     - take的mode是request
+         * 封装入栈的节点根据既有的栈顶节点mode状态决定自己的mode和行为
+         *     - 直接入栈型
+         *         - 空栈
+         *         - 栈顶节点跟自己一样mode 不互补
+         *     - 交易型
+         *         - 跟栈顶节点互补 可以交易
+         *     - 帮助交易型
+         *         - 栈上两个节点正在交易 帮他们加速
          */
         @SuppressWarnings("unchecked")
         E transfer(E e, boolean timed, long nanos) {
@@ -347,18 +369,22 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
              */
 
             SNode s = null; // constructed/reused as needed
+            /**
+             * put线程初始状态 请求交易还没交付的生产者
+             * take线程初始状态 请求交易还没匹配的消费者
+             */
             int mode = (e == null) ? REQUEST : DATA;
 
             for (;;) {
-                SNode h = head;
-                if (h == null || h.mode == mode) {  // empty or same-mode
+                SNode h = this.head; // 栈顶节点
+                if (h == null || h.mode == mode) {  // empty or same-mode // 交易栈为空或者交易栈顶节点和新节点模式一样 新节点作为栈顶入栈等待被交易
                     if (timed && nanos <= 0L) {     // can't wait
                         if (h != null && h.isCancelled())
                             casHead(h, h.next);     // pop cancelled node
                         else
                             return null;
-                    } else if (casHead(h, s = snode(s, e, h, mode))) {
-                        SNode m = awaitFulfill(s, timed, nanos);
+                    } else if (this.casHead(h, s = snode(s, e, h, mode))) { // 新节点为栈顶
+                        SNode m = awaitFulfill(s, timed, nanos); // put线程被唤醒后拿到的是匹配的take线程的节点(数据是null)
                         if (m == s) {               // wait was cancelled
                             clean(s);
                             return null;
@@ -367,26 +393,33 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
                             casHead(h, s.next);     // help s's fulfiller
                         return (E) ((mode == REQUEST) ? m.item : s.item);
                     }
-                } else if (!isFulfilling(h.mode)) { // try to fulfill
-                    if (h.isCancelled())            // already cancelled
+                } else if (!isFulfilling(h.mode)) { // try to fulfill // 栈顶节点没处在交易中 尝试跟栈顶节点进行交易
+                    if (h.isCancelled())            // already cancelled // 栈顶节点无效了弹出 所谓弹出就是将栈顶指针移向栈顶的下一个节点
                         casHead(h, h.next);         // pop and retry
-                    else if (casHead(h, s=snode(s, e, h, FULFILLING|mode))) {
+                    else if (casHead(h, s=snode(s, e, h, FULFILLING|mode))) { // 入栈新节点 栈顶mode集合加上交易中 用交易中标识栈顶节点
                         for (;;) { // loop until matched or waiters disappear
-                            SNode m = s.next;       // m is s's match
+                            SNode m = s.next;       // m is s's match // 栈上前2个节点交易
                             if (m == null) {        // all waiters are gone
                                 casHead(s, null);   // pop fulfill node
                                 s = null;           // use new node next time
                                 break;              // restart main loop
                             }
                             SNode mn = m.next;
+                            /**
+                             * s是栈顶节点
+                             *     - 当初已经有线程因为等待交易而阻塞 线程记录在s的waiter中
+                             *     - s中的mode集合包含了正在交易
+                             * m是第二个节点
+                             *     - m对应的线程还没当作阻塞线程记录到m的waiter上 线程正在进行这交易行为
+                             */
                             if (m.tryMatch(s)) {
-                                casHead(s, mn);     // pop both s and m
+                                casHead(s, mn);     // pop both s and m // 栈上前2个节点匹配成功 弹出
                                 return (E) ((mode == REQUEST) ? m.item : s.item);
                             } else                  // lost match
                                 s.casNext(m, mn);   // help unlink
                         }
                     }
-                } else {                            // help a fulfiller
+                } else {                            // help a fulfiller // 栈顶节点正在交易中 帮他们两个节点交易加速
                     SNode m = h.next;               // m is h's match
                     if (m == null)                  // waiter is gone
                         casHead(h, null);           // pop fulfilling node
@@ -436,7 +469,7 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
             Thread w = Thread.currentThread();
             int spins = shouldSpin(s)
                 ? (timed ? MAX_TIMED_SPINS : MAX_UNTIMED_SPINS)
-                : 0;
+                : 0; // 自旋次数
             for (;;) {
                 if (w.isInterrupted())
                     s.tryCancel();
@@ -455,9 +488,9 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
                     spins = shouldSpin(s) ? (spins - 1) : 0;
                 }
                 else if (s.waiter == null)
-                    s.waiter = w; // establish waiter so can park next iter
+                    s.waiter = w; // establish waiter so can park next iter // 关联节点和线程映射关系
                 else if (!timed)
-                    LockSupport.park(this);
+                    LockSupport.park(this); // 线程阻塞
                 else if (nanos > SPIN_FOR_TIMEOUT_THRESHOLD)
                     LockSupport.parkNanos(this, nanos);
             }
@@ -858,7 +891,7 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
      *        access; otherwise the order is unspecified.
      */
     public SynchronousQueue(boolean fair) {
-        transferer = fair ? new TransferQueue<E>() : new TransferStack<E>();
+        this.transferer = fair ? new TransferQueue<E>() : new TransferStack<E>();
     }
 
     /**
@@ -870,7 +903,7 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
      */
     public void put(E e) throws InterruptedException {
         if (e == null) throw new NullPointerException();
-        if (transferer.transfer(e, false, 0) == null) {
+        if (transferer.transfer(e, false, 0) == null) { // put线程返回值是null数据的节点 take线程返回值是与之匹配的有数据的节点
             Thread.interrupted();
             throw new InterruptedException();
         }
