@@ -566,7 +566,7 @@ bool ObjectSynchronizer::quick_enter(oop obj, Thread* self,
 // changed. The implementation is extremely sensitive to race condition. Be careful.
 
 void ObjectSynchronizer::enter(Handle obj, BasicLock* lock, TRAPS) {
-  if (UseBiasedLocking) {
+  if (UseBiasedLocking) { // 标识是否启用偏向锁
     if (!SafepointSynchronize::is_at_safepoint()) {
       BiasedLocking::revoke(obj, THREAD);
     } else {

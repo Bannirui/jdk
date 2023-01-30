@@ -391,7 +391,7 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
 
 
 int
-JavaMain(void* _args)
+JavaMain(void* _args) // Hot-Spot虚拟机启动器的执行入口
 {
     JavaMainArgs *args = (JavaMainArgs *)_args;
     int argc = args->argc;
