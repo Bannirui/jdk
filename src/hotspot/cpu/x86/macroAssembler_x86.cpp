@@ -1081,15 +1081,15 @@ void MacroAssembler::reserved_stack_check() {
     bind(no_reserved_zone_enabling);
 }
 
-int MacroAssembler::biased_locking_enter(Register lock_reg,
-                                         Register obj_reg,
+int MacroAssembler::biased_locking_enter(Register lock_reg, // 存储指向BasicObjectLock的指针
+                                         Register obj_reg, // 存储锁对象的指针
                                          Register swap_reg,
                                          Register tmp_reg,
                                          Register tmp_reg2,
                                          bool swap_reg_contains_mark,
-                                         Label& done,
-                                         Label* slow_case,
-                                         BiasedLockingCounters* counters) {
+                                         Label& done, // 标记 标识获取锁成功
+                                         Label* slow_case, // 标记 指向的是InterpreterRuntime::monitorenter()
+                                         BiasedLockingCounters* counters) { // done和slow_case被传入 这样在biased_locking_enter()函数中可以根据情况跳转到这两处
   assert(UseBiasedLocking, "why call this otherwise?");
   assert(swap_reg == rax, "swap_reg must be rax for cmpxchgq");
   assert(tmp_reg != noreg, "tmp_reg must be supplied");
@@ -1109,14 +1109,14 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   // First check to see whether biasing is even enabled for this object
   Label cas_label;
   int null_check_offset = -1;
-  if (!swap_reg_contains_mark) {
+  if (!swap_reg_contains_mark) { // swap_reg中没有存mark_addr就先将mark_addr存入swap_reg中
     null_check_offset = offset();
     movptr(swap_reg, mark_addr);
   }
-  movptr(tmp_reg, swap_reg);
-  andptr(tmp_reg, markWord::biased_lock_mask_in_place);
-  cmpptr(tmp_reg, markWord::biased_lock_pattern);
-  jcc(Assembler::notEqual, cas_label);
+  movptr(tmp_reg, swap_reg); // 将对象的mark_addr 即markOop指针移入tmp_reg中
+  andptr(tmp_reg, markWord::biased_lock_mask_in_place); // 将tmp_reg和biased_lock_mask_in_place(111)进行与操作 取出markOop的后3位 即(是否偏向锁+锁标志位)
+  cmpptr(tmp_reg, markWord::biased_lock_pattern); // 查看Mark Word的后3位是否为5(即101)
+  jcc(Assembler::notEqual, cas_label); // 不相等说明不是偏向锁状态 跳到cas_label
   // The bias pattern is present in the object's header. Need to check
   // whether the bias owner and the epoch are both still current.
 #ifndef _LP64
@@ -1130,10 +1130,10 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   if (swap_reg_contains_mark) {
     null_check_offset = offset();
   }
-  load_prototype_header(tmp_reg, obj_reg, tmp_reg2);
+  load_prototype_header(tmp_reg, obj_reg, tmp_reg2); // 将类的prototype_header(Mark Word)加载到tmp_reg中
 #ifdef _LP64
-  orptr(tmp_reg, r15_thread);
-  xorptr(tmp_reg, swap_reg);
+  orptr(tmp_reg, r15_thread); // 将当前线程地址和类的prototype_header相或 得到的结果=当前线程id+prototype_header中的(epoch+分代年龄+偏向锁标识+锁标志位)
+  xorptr(tmp_reg, swap_reg); // 将上面得到的计算结果与锁对象的markOop进行异或 得到一个结果diff(相等的位置被置为0)
   Register header_reg = tmp_reg;
 #else
   xorptr(tmp_reg, swap_reg);
@@ -1141,12 +1141,12 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   xorptr(swap_reg, tmp_reg);
   Register header_reg = swap_reg;
 #endif
-  andptr(header_reg, ~((int) markWord::age_mask_in_place));
+  andptr(header_reg, ~((int) markWord::age_mask_in_place)); // 将header_reg中除了分代年龄之外的其他位取出来(也就是将上面异或得到的结果中分代年龄忽略掉)
   if (counters != NULL) {
     cond_inc32(Assembler::zero,
                ExternalAddress((address) counters->biased_lock_entry_count_addr()));
   }
-  jcc(Assembler::equal, done);
+  jcc(Assembler::equal, done); // 如果除了分代年龄 对象的markOop和(当前线程地址+其他位)相等 那么上面与操作的结果就应该是0 表明对象之前已经偏向当前线程 跳到done处 执行同步代码块中的代码 否则说明当前线程还不是偏向锁的持有者
 
   Label try_revoke_bias;
   Label try_rebias;
@@ -1172,7 +1172,7 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   // that the current epoch is invalid in order to do this because
   // otherwise the manipulations it performs on the mark word are
   // illegal.
-  testptr(header_reg, markWord::epoch_mask_in_place);
+  testptr(header_reg, markWord::epoch_mask_in_place); // 测试锁对象的epoch值和锁对象类的epoch是否相等 如果不相等说明锁过期了 需要重新偏向
   jccb(Assembler::notZero, try_rebias);
 
   // The epoch of the current bias is still valid but we know nothing
@@ -1183,16 +1183,16 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   // don't accidentally blow away another thread's valid bias.
   NOT_LP64( movptr(swap_reg, saved_mark_addr); )
   andptr(swap_reg,
-         markWord::biased_lock_mask_in_place | markWord::age_mask_in_place | markWord::epoch_mask_in_place);
+         markWord::biased_lock_mask_in_place | markWord::age_mask_in_place | markWord::epoch_mask_in_place); // 锁对象还未偏向任何线程 可以尝试去获取锁 使得对象偏向当前线程 取出对象的Mark Word中除线程地址之外的其他位
 #ifdef _LP64
-  movptr(tmp_reg, swap_reg);
-  orptr(tmp_reg, r15_thread);
+  movptr(tmp_reg, swap_reg); // 将其他位信息移动至tmp_reg
+  orptr(tmp_reg, r15_thread); // 将其他位与当前线程进行异或 构造成一个新的完整的Mark Word 存入tmp_reg中 新的Mark Word因为保存了当前线程地址 所以会偏向当前线程
 #else
   get_thread(tmp_reg);
   orptr(tmp_reg, swap_reg);
 #endif
   lock();
-  cmpxchgptr(tmp_reg, mark_addr); // compare tmp_reg and swap_reg
+  cmpxchgptr(tmp_reg, mark_addr); // compare tmp_reg and swap_reg // 尝试利用CAS操作将新构成的Mark Word存入锁对象的mark_addr(Mark Word) 如果设置成功则获取偏向锁成功 cmpxchgptr操作会强制将rax寄存器(swap_reg)中内容作为老数据 与第二个参数(mark_addr)的内容进行比较 如果相等则将第一个参数的内容(即tmp_reg中的新数据)存入mark_addr
   // If the biasing toward our thread failed, this means that
   // another thread succeeded in biasing it toward itself and we
   // need to revoke that bias. The revocation will occur in the
@@ -1202,9 +1202,9 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
                ExternalAddress((address) counters->anonymously_biased_lock_entry_count_addr()));
   }
   if (slow_case != NULL) {
-    jcc(Assembler::notZero, *slow_case);
+    jcc(Assembler::notZero, *slow_case); // CAS操作失败的情况下 表明对象头中的markOop数据已经被篡改 即有其他线程已经获取了偏向锁 因为在偏向锁状态下不容许多个线程访问同一个锁对象 所以需要跳到slow_case(InterpreterRuntime::monitorenter)处去撤销对象的偏向锁 并进行锁升级
   }
-  jmp(done);
+  jmp(done); // CAS成功的情况下 直接跳到done处 回去执行方法的字节码
 
   bind(try_rebias);
   // At this point we know the epoch has expired, meaning that the
@@ -1238,7 +1238,7 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   }
   jmp(done);
 
-  bind(try_revoke_bias);
+  bind(try_revoke_bias); // try_revoke_bias使用CAS操作重置Mark Word 撤销偏向锁后后续的所有操作都走轻量级锁的加锁过程
   // The prototype mark in the klass doesn't have the bias bit set any
   // more, indicating that objects of this data type are not supposed
   // to be biased any more. We are going to try to reset the mark of

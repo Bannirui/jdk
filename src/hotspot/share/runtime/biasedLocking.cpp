@@ -99,11 +99,11 @@ void BiasedLocking::init() {
   // due to large number of safepoints being taken during VM startup for
   // bias revocation.
   if (UseBiasedLocking) {
-    if (BiasedLockingStartupDelay > 0) {
+    if (BiasedLockingStartupDelay > 0) { // 默认时间是4000ms 在启动4s之后启动一个定时任务来设置开启偏向锁的设定
       EnableBiasedLockingTask* task = new EnableBiasedLockingTask(BiasedLockingStartupDelay);
       task->enroll();
     } else {
-      enable_biased_locking();
+      enable_biased_locking(); // 将锁对象的Mark Word的后3个位设置为101 锁对象的Mark Word被称为prototype_header
     }
   }
 }

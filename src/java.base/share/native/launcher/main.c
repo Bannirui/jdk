@@ -33,7 +33,7 @@
 #include "defines.h"
 #include "jli_util.h"
 #include "jni.h"
-
+// ms的编译器版本
 #ifdef _MSC_VER
 #if _MSC_VER > 1400 && _MSC_VER < 1600
 
@@ -77,13 +77,14 @@
 /*
  * Entry point.
  */
+// win系统gui启动方式
 #ifdef JAVAW
 
 char **__initenv;
 
 int WINAPI
 WinMain(HINSTANCE inst, HINSTANCE previnst, LPSTR cmdline, int cmdshow)
-{
+{ // JAVAW可视化启动方式 只支持win系统
     int margc;
     char** margv;
     int jargc;
@@ -96,6 +97,14 @@ WinMain(HINSTANCE inst, HINSTANCE previnst, LPSTR cmdline, int cmdshow)
 JNIEXPORT int
 main(int argc, char **argv)
 {
+    /**
+     * 通过java命令执行javac编译好的Java字节码
+     * 即VMLoaderTest.java经过javac编译好的类是VMLoaderTest
+     * 比如执行的是java VMLoaderTest
+     * 那么这个地方main方法接收到的是2个参数
+     *   - java可执行文件全路径
+     *   - VMLoaderTest
+     */
     int margc;
     char** margv;
     int jargc;
@@ -105,11 +114,11 @@ main(int argc, char **argv)
     {
         int i, main_jargc, extra_jargc;
         JLI_List list;
-
+        // 0
         main_jargc = (sizeof(const_jargs) / sizeof(char *)) > 1
             ? sizeof(const_jargs) / sizeof(char *)
             : 0; // ignore the null terminator index
-
+        // 0
         extra_jargc = (sizeof(const_extra_jargs) / sizeof(char *)) > 1
             ? sizeof(const_extra_jargs) / sizeof(char *)
             : 0; // ignore the null terminator index
@@ -133,13 +142,14 @@ main(int argc, char **argv)
             fprintf(stderr, "EXTRA_JAVA_ARGS defined without JAVA_ARGS");
             abort();
          } else { // no extra args, business as usual
+            // 0
             jargc = main_jargc;
             jargv = (char **) const_jargs;
          }
     }
 
     JLI_InitArgProcessing(jargc > 0, const_disable_argfile);
-
+// 32位平台
 #ifdef _WIN32
     {
         int i = 0;
@@ -165,13 +175,15 @@ main(int argc, char **argv)
 #else /* *NIXES */
     {
         // accommodate the NULL at the end
+        // 长度3的数组
         JLI_List args = JLI_List_new(argc + 1);
         int i = 0;
 
         // Add first arg, which is the app name
+        // 数组首元素就是编译好的java可执行文件全路径
         JLI_List_add(args, JLI_StringDup(argv[0]));
         // Append JDK_JAVA_OPTIONS
-        if (JLI_AddArgsFromEnvVar(args, JDK_JAVA_OPTIONS)) {
+        if (JLI_AddArgsFromEnvVar(args, JDK_JAVA_OPTIONS)) { // 从环境变量中加载键JDK_JAVA_OPTIONS对应的值放到列表args里面 没有配置这个环境变量这个分支不执行
             // JLI_SetTraceLauncher is not called yet
             // Show _JAVA_OPTIONS content along with JDK_JAVA_OPTIONS to aid diagnosis
             if (getenv(JLDEBUG_ENV_ENTRY)) {
@@ -184,7 +196,7 @@ main(int argc, char **argv)
         // Iterate the rest of command line
         for (i = 1; i < argc; i++) {
             JLI_List argsInFile = JLI_PreprocessArg(argv[i], JNI_TRUE);
-            if (NULL == argsInFile) {
+            if (NULL == argsInFile) { // 将VMLoaderTest放到args中 其实就是为了将来JVM初始化好回调到Java类中的main方法
                 JLI_List_add(args, JLI_StringDup(argv[i]));
             } else {
                 int cnt, idx;
@@ -197,12 +209,28 @@ main(int argc, char **argv)
                 JLI_MemFree(argsInFile);
             }
         }
-        margc = args->size;
+        margc = args->size; // main方法实际的启动参数
         // add the NULL pointer at argv[argc]
-        JLI_List_add(args, NULL);
+        JLI_List_add(args, NULL); // args数组中最后一个脚标占位了null
         margv = args->elements;
     }
 #endif /* WIN32 */
+/**
+ * 当启动执行Java时没有指定启动参数和可选项时
+ * 即默认的方式 java xxx
+ * 调用JLI_Launch的参数就是main方法的启动参数
+ *   - margc=2
+ *   - margv
+ *     - /Users/dingrui/Dev/code/git/cpp/jdk/build/macosx-x86_64-server-slowdebug/jdk/bin/java
+ *     - VMLoaderTest
+ *   - jargc=0
+ *
+ * pname标识的是program name
+ * lname标识的是launcher name
+ * 这2个是通过宏指定的
+ *   - pname->java
+ *   - lname->openjdk
+ */
     return JLI_Launch(margc, margv,
                    jargc, (const char**) jargv,
                    0, NULL,

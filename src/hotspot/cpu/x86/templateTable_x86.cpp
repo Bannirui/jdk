@@ -4449,8 +4449,8 @@ void TemplateTable::monitorenter() {
   __ increment(rbcp);
 
   // store object
-  __ movptr(Address(rmon, BasicObjectLock::obj_offset_in_bytes()), rax);
-  __ lock_object(rmon);
+  __ movptr(Address(rmon, BasicObjectLock::obj_offset_in_bytes()), rax); // 将要锁的对象指针放到BasicObjectLock的obj变量中
+  __ lock_object(rmon); // 跳转执行lock_object函数
 
   // check to make sure this monitor doesn't cause stack overflow after locking
   __ save_bcp();  // in case of exception

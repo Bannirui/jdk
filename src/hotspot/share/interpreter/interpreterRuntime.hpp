@@ -115,7 +115,7 @@ class InterpreterRuntime: AllStatic {
 
  public:
   // Synchronization
-  static void    monitorenter(JavaThread* thread, BasicObjectLock* elem);
+  static void    monitorenter(JavaThread* thread, BasicObjectLock* elem); // JVM发现要执行monitorenter字节码指令时调用
   static void    monitorexit (JavaThread* thread, BasicObjectLock* elem);
 
   static void    throw_illegal_monitor_state_exception(JavaThread* thread);

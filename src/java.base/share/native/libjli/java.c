@@ -252,6 +252,7 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
     _is_java_args = javaargs;
     _wc_enabled = cpwildcard;
 
+    // 窗体模式启动进程 只支持win系统
     InitLauncher(javaw);
     DumpState();
     if (JLI_IsTraceLauncher()) {
@@ -330,7 +331,7 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
     }
 
     /* Override class path if -jar flag was specified */
-    if (mode == LM_JAR) {
+    if (mode == LM_JAR) { // jar包启动方式
         SetClassPath(what);     /* Override class path */
     }
 

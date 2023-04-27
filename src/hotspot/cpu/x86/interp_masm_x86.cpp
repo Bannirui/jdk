@@ -1175,10 +1175,10 @@ void InterpreterMacroAssembler::lock_object(Register lock_reg) {
   assert(lock_reg == LP64_ONLY(c_rarg1) NOT_LP64(rdx),
          "The argument is only for looks. It must be c_rarg1");
 
-  if (UseHeavyMonitors) {
+  if (UseHeavyMonitors) { // 标识使用重量级锁
     call_VM(noreg,
             CAST_FROM_FN_PTR(address, InterpreterRuntime::monitorenter),
-            lock_reg);
+            lock_reg); // 调用monitorenter()执行
   } else {
     Label done;
 
@@ -1195,9 +1195,9 @@ void InterpreterMacroAssembler::lock_object(Register lock_reg) {
     Label slow_case;
 
     // Load object pointer into obj_reg
-    movptr(obj_reg, Address(lock_reg, obj_offset));
+    movptr(obj_reg, Address(lock_reg, obj_offset)); // 对象指针存入obj_reg中
 
-    if (UseBiasedLocking) {
+    if (UseBiasedLocking) { // 启用偏向锁标识
       Register rklass_decode_tmp = LP64_ONLY(rscratch1) NOT_LP64(noreg);
       biased_locking_enter(lock_reg, obj_reg, swap_reg, tmp_reg, rklass_decode_tmp, false, done, &slow_case);
     }
