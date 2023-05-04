@@ -326,8 +326,8 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
      *   - VMLoaderTest
      *
      * 以下3个数组用来存放解析出来的路径信息
-     *   - jrepath 用来存放jre路径 /jdk/build/macosx-x86_64-server-slowdebug/jdk/lib/server/lib/libjvm.dylib
-     *   - jvmpath 用来存放jvm路径 /jdk/build/macosx-x86_64-server-slowdebug/jdk/bin/java
+     *   - jrepath 用来存放jre路径 /jdk/build/macosx-x86_64-server-slowdebug/jdk/bin/java
+     *   - jvmpath 用来存放jvm路径 /jdk/build/macosx-x86_64-server-slowdebug/jdk/lib/server/lib/libjvm.dylib
      *   - jvmcfg 用来存放jvmcfg路径 /jdk/build/macosx-x86_64-server-slowdebug/jdk/lib/jvm.cfg
      */
     CreateExecutionEnvironment(&argc, &argv,
@@ -348,6 +348,13 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
 
     /**
      * 加载JVM
+     * 从JVM动态链接库中加载好启动JVM需要的函数 在后面进行JVM启动时机直接调用
+     *
+     * jvmpath /jdk/build/macosx-x86_64-server-slowdebug/jdk/lib/server/lib/libjvm.dylib
+     * 从jvm动态链接库加载出3个函数放在ifn中
+     *   - JNI_CreateJavaVM
+     *   - JNI_GetDefaultJavaVMInitArgs
+     *   - JNI_GetCreatedJavaVMs
      */
     if (!LoadJavaVM(jvmpath, &ifn)) {
         return(6);
