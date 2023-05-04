@@ -94,7 +94,9 @@ typedef struct {
      */
     GetDefaultJavaVMInitArgs_t GetDefaultJavaVMInitArgs;
     /**
-     *
+     * JNI_GetCreatedJavaVMs函数
+     * 声明在jni.h中
+     * 定义在jni.cpp中
      */
     GetCreatedJavaVMs_t GetCreatedJavaVMs;
 } InvocationFunctions;

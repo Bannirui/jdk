@@ -387,7 +387,18 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
      * ParseArguments is false, the program should exit.
      */
     /**
-     * 解析命令行参数
+     * 解析JVM启动参数
+     *   - argc 1
+     *   - argv VMLoaderTest
+     *   - jrepath /jdk/build/macosx-x86_64-server-slowdebug/jdk/bin/java
+     * 解析出来的结果存放
+     *   - mode 启动方式
+     *     - 1 Class启动方式
+     *     - 2 Jar包启动方式
+     *   - what JVM加载的class字节码文件
+     *     - VMLoaderTest
+     *   - ret JVM退出方式
+     *     - 0 正常退出
      */
     if (!ParseArguments(&argc, &argv, &mode, &what, &ret, jrepath)) {
         return(ret);
@@ -406,6 +417,23 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
 
     /**
      * 启动JVM
+     *   - ifn 包含了JVM动态链接库的3个函数
+     *     - JNI_CreateJavaVM函数
+     *     - JNI_GetDefaultJavaVMInitArgs函数
+     *     - JNI_GetCreatedJavaVMs函数
+     *   - threadStackSize
+     *   - argc JVM启动参数
+     *     - 在Class启动场景下 1个启动参数 就是VMLoaderTest.java编译好的VMLoaderTest的class字节码文件
+     *   - argv JVM启动参数
+     *     - VMLoaderTest字节码文件
+     *   - mode JVM启动方式
+     *     - 1 Class启动方式
+     *     - 2 Jar包启动方式
+     *     - ...
+     *   - what
+     *     - JVM要加载的字节码文件 VMLoaderTest
+     *   -ret JVM退出方式
+     *     - 0 正常退出
      */
     return JVMInit(&ifn, threadStackSize, argc, argv, mode, what, ret);
 }
@@ -1342,6 +1370,24 @@ GetOpt(int *pargc, char ***pargv, char **poption, char **pvalue) {
  * should exit without starting vm, returns JNI_TRUE if vm needs
  * to be started to process given options.  *pret (the launcher
  * process return value) is set to 0 for a normal exit.
+ */
+/**
+ * 从jdk入口main函数的启动参数以及解析出来的jre路径 解析出启动JVM的参数
+ * @param pargc 1
+ *              main函数启动参数有2个
+ *                - /jdk/build/macosx-x86_64-server-slowdebug/jdk/bin/java
+ *                - VMLoaderTest
+ *              第2个VMLoaderTest是用来告知JVM启动后要解析的class字节码文件
+ * @param pargv VMLoaderTest
+ * @param pmode 解析结果 JVM启动方式
+ *                        - 1 Class启动
+ *                        - 2 Jar启动
+ * @param pwhat 解析结果 JVM启动入口
+ *                        - VMLoaderTest 这个类的class字节码文件
+ * @param pret 解析结果 JVM退出方式
+ *                       - 0 正常退出
+ * @param jrepath jre路径 /jdk/build/macosx-x86_64-server-slowdebug/jdk/bin/java
+ * @return
  */
 static jboolean
 ParseArguments(int *pargc, char ***pargv,

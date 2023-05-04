@@ -969,6 +969,17 @@ SetXStartOnFirstThreadArg()
 }
 
 // MacOSX we may continue in the same thread
+/**
+ *
+ * @param ifn
+ * @param threadStackSize
+ * @param argc
+ * @param argv
+ * @param mode
+ * @param what
+ * @param ret
+ * @return
+ */
 int
 JVMInit(InvocationFunctions* ifn, jlong threadStackSize,
                  int argc, char **argv,
