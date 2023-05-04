@@ -221,6 +221,33 @@ static jlong initialHeapSize    = 0;  /* initial heap size */
 
 /*
  * Entry point.
+ * java入口函数
+ *   - 解析参数
+ *   - 创建运行环境
+ *   - 加载JVM
+ *   - 解析命令行参数
+ *   - 启动JVM
+ *
+ *
+ * 调试实参
+ *   - jdk程序main方法启动参数
+ *     - argc->2
+ *     - argv
+ *       - /jdk/build/macosx-x86_64-server-slowdebug/jdk/bin/java
+ *       - VMLoaderTest
+ *   - java启动参数
+ *     - jargc->0
+ *     - jargv->null
+ *   - appclassc->0
+ *   - appclassv->null
+ *   - fullversion->15-internal+0-adhoc.dingrui.dk
+ *   - dotversion->0.0
+ *   - pname->java
+ *   - lname->opendk
+ *   - javaargs->0
+ *   - cpwildcard->0
+ *   - javaw->0
+ *   - ergo->0
  */
 JNIEXPORT int JNICALL
 JLI_Launch(int argc, char ** argv,              /* main argc, argv */
@@ -236,6 +263,12 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
         jint ergo                               /* unused */
 )
 {
+  /**
+   * java的启动方式
+   *   - Class启动
+   *   - Jar包启动
+   *   - ...
+   */
     int mode = LM_UNKNOWN;
     char *what = NULL;
     char *main_class = NULL;
@@ -280,6 +313,23 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
      */
     SelectVersion(argc, argv, &main_class);
 
+    /**
+     * 创建运行环境
+     *   - 解析jre jvm路径
+     *   - 创建线程t2
+     *     - 第一次执行到这的线程是t1 t2被创建之后t1被挂起
+     *     - t2线程被cpu调度之后执行的是main.c中的入口方法main 顺着调用链会再次执行到这
+     *     - 第二次执行和第一次执行的唯一区别就是不用再创建新的线程
+     *
+     * 启动参数argv如下
+     *   - /jdk/build/macosx-x86_64-server-slowdebug/jdk/bin/java
+     *   - VMLoaderTest
+     *
+     * 以下3个数组用来存放解析出来的路径信息
+     *   - jrepath 用来存放jre路径 /jdk/build/macosx-x86_64-server-slowdebug/jdk/lib/server/lib/libjvm.dylib
+     *   - jvmpath 用来存放jvm路径 /jdk/build/macosx-x86_64-server-slowdebug/jdk/bin/java
+     *   - jvmcfg 用来存放jvmcfg路径 /jdk/build/macosx-x86_64-server-slowdebug/jdk/lib/jvm.cfg
+     */
     CreateExecutionEnvironment(&argc, &argv,
                                jrepath, sizeof(jrepath),
                                jvmpath, sizeof(jvmpath),
@@ -296,6 +346,9 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
         start = CurrentTimeMicros();
     }
 
+    /**
+     * 加载JVM
+     */
     if (!LoadJavaVM(jvmpath, &ifn)) {
         return(6);
     }
@@ -326,6 +379,9 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
     /* Parse command line options; if the return value of
      * ParseArguments is false, the program should exit.
      */
+    /**
+     * 解析命令行参数
+     */
     if (!ParseArguments(&argc, &argv, &mode, &what, &ret, jrepath)) {
         return(ret);
     }
@@ -341,6 +397,9 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
     /* Set the -Dsun.java.launcher pseudo property */
     SetJavaLauncherProp();
 
+    /**
+     * 启动JVM
+     */
     return JVMInit(&ifn, threadStackSize, argc, argv, mode, what, ret);
 }
 /*
@@ -1071,7 +1130,7 @@ SelectVersion(int argc, char **argv, char **main_class)
      * .. skipped for JRE 1.5 and beyond.
      * .. not even checked for pre 1.5.
      */
-    if ((env_in = getenv(ENV_ENTRY)) != NULL) {
+    if ((env_in = getenv(ENV_ENTRY)) != NULL) { // 没有配置环境变量 _JAVA_VERSION_SET
         if (*env_in != '\0')
             *main_class = JLI_StringDup(env_in);
         return;

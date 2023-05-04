@@ -223,9 +223,12 @@ jclass GetLauncherHelperClass(JNIEnv *env);
  */
 int JavaMain(void* args);
 
+// java的启动方式
 enum LaunchMode {               // cf. sun.launcher.LauncherHelper
     LM_UNKNOWN = 0,
+    // Class启动
     LM_CLASS,
+    // Jar包启动
     LM_JAR,
     LM_MODULE,
     LM_SOURCE

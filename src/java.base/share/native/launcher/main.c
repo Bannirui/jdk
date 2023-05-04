@@ -98,6 +98,7 @@ JNIEXPORT int
 main(int argc, char **argv)
 {
     /**
+     * main函数 程序入口
      * 通过java命令执行javac编译好的Java字节码
      * 即VMLoaderTest.java经过javac编译好的类是VMLoaderTest
      * 比如执行的是java VMLoaderTest
