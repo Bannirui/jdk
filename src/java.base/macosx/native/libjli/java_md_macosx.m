@@ -811,6 +811,14 @@ static void* ThreadJavaMain(void* args) {
 /*
  * Block current thread and continue execution in a new thread.
  */
+/**
+ * 创建一个新线程作为JVM的主线程 指定这个线程的栈大小为stack_size
+ * 该线程被CPU调度之后会回调ThreadJavaMain方法 这个方法的参数为args
+ * 也就是说JVM的启动入口就是ThreadJavaMain函数
+ * @param stack_size JVM主线程 线程栈大小
+ * @param args 启动JVM的参数
+ * @return
+ */
 int
 CallJavaMainInNewThread(jlong stack_size, void* args) {
     int rslt;
@@ -820,11 +828,12 @@ CallJavaMainInNewThread(jlong stack_size, void* args) {
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
     if (stack_size > 0) {
+      // 指定线程栈大小
         pthread_attr_setstacksize(&attr, stack_size);
     }
     pthread_attr_setguardsize(&attr, 0); // no pthread guard page on java threads
 
-    if (pthread_create(&tid, &attr, ThreadJavaMain, args) == 0) {
+    if (pthread_create(&tid, &attr, ThreadJavaMain, args) == 0) { // 系统调用创建线程 这个线程就是JVM的主线程 该线程被CPU调度之后就回调ThreadJavaMain方法 并且方法的参数为args
         void* tmp;
         pthread_join(tid, &tmp);
         rslt = (int)(intptr_t)tmp;
@@ -971,19 +980,25 @@ SetXStartOnFirstThreadArg()
 // MacOSX we may continue in the same thread
 /**
  *
- * @param ifn
- * @param threadStackSize
- * @param argc
- * @param argv
- * @param mode
- * @param what
- * @param ret
+ * @param ifn JVM的启动函数在这个结构体中
+ * @param threadStackSize 0
+ * @param argc 0 JVM启动参数 没有指定额外的JVM启动参数 都用默认的
+ * @param argv null
+ * @param mode JVM的启动方式
+ *               - 1 Class启动方式
+ *               - 2 Jar包启动方式
+ *               - ...
+ * @param what JVM启动要加载的字节码文件
+ *               - 以Class启动方式启动JVM 要加载的字节码文件是VMLoaderTest.java编译好的class字节码文件VMLoaderTest
+ * @param ret JVM执行完如何退出
+ *              - 0 正常退出
  * @return
  */
 int
 JVMInit(InvocationFunctions* ifn, jlong threadStackSize,
                  int argc, char **argv,
                  int mode, char *what, int ret) {
+  // sameThread宏定义默认值false 即新启一个线程作为JVM主线程
     if (sameThread) {
         JLI_TraceLauncher("In same thread\n");
         // need to block this thread against the main thread
@@ -1012,6 +1027,12 @@ JVMInit(InvocationFunctions* ifn, jlong threadStackSize,
         [pool drain];
         return rslt;
     } else {
+      /**
+       * 新建一个线程作为JVM的主线程
+       *   - 对这个线程而言 不指定其线程栈大小 交给jdk使用默认值
+       *   - JVM启动参数都不指定 全部使用默认 比如最大堆 垃圾回收算法等等
+       *   - 只指定JVM让其以Class启动方式 class字节码文件为what 执行完Java代码之后 退出方式为ret
+       */
         return ContinueInNewThread(ifn, threadStackSize, argc, argv, mode, what, ret);
     }
 }

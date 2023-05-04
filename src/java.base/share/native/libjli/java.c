@@ -421,11 +421,9 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
      *     - JNI_CreateJavaVM函数
      *     - JNI_GetDefaultJavaVMInitArgs函数
      *     - JNI_GetCreatedJavaVMs函数
-     *   - threadStackSize
-     *   - argc JVM启动参数
-     *     - 在Class启动场景下 1个启动参数 就是VMLoaderTest.java编译好的VMLoaderTest的class字节码文件
-     *   - argv JVM启动参数
-     *     - VMLoaderTest字节码文件
+     *   - threadStackSize 0
+     *   - argc JVM启动参数 0
+     *   - argv JVM启动参数 null
      *   - mode JVM启动方式
      *     - 1 Class启动方式
      *     - 2 Jar包启动方式
@@ -434,6 +432,10 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
      *     - JVM要加载的字节码文件 VMLoaderTest
      *   -ret JVM退出方式
      *     - 0 正常退出
+     *
+     * 语义就是启动JVM 让JVM以Class启动方式加载VMLoaderTest这个class字节码文件
+     * 该函数本身并不直接负责启动JVM 其内部通过创建新线程的方式将JVM的启动这个动作控制权转移给新的线程
+     * 而JVM启动时机就是新线程被CPU调度的时候 新线程被调度之后执行的是JavaMain方法 即JVM的启动逻辑在JavaMain方法中
      */
     return JVMInit(&ifn, threadStackSize, argc, argv, mode, what, ret);
 }
@@ -485,6 +487,22 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
     } while (JNI_FALSE)
 
 
+/**
+ * JVM启动入口
+ * @param _args 启动JVM需要的一些列参数 为JavaMainArgs结构体
+ *                - argc argc argv为JVM启动参数 诸如最大堆 垃圾回收算法等
+ *                - argv
+ *                - mode JVM启动方式
+ *                   - 1 Class启动方式
+ *                   - 2 Jar包启动方式
+ *                - what JVM启动引擎字节文件
+ *                   - VMLoaderTest.java编译好的class字节文件VMLoaderTest
+ *                - ifn InvocationFunctions结构体 封装了JVM动态链接库的函数
+ *                  - JNI_CreateJavaVM函数
+ *                  - JNI_GetDefaultJavaVMInitArgs函数
+ *                  - JNI_GetCreatedJavaVMs函数
+ * @return
+ */
 int
 JavaMain(void* _args) // Hot-Spot虚拟机启动器的执行入口
 {
@@ -493,6 +511,12 @@ JavaMain(void* _args) // Hot-Spot虚拟机启动器的执行入口
     char **argv = args->argv;
     int mode = args->mode;
     char *what = args->what;
+    /**
+     * JVM动态链接库的函数
+     *   - JNI_CreateJavaVM函数
+     *   - JNI_GetDefaultJavaVMInitArgs函数
+     *   - JNI_GetCreatedJavaVMs函数
+     */
     InvocationFunctions ifn = args->ifn;
 
     JavaVM *vm = 0;
@@ -2436,6 +2460,20 @@ IsWildCardEnabled()
     return _wc_enabled;
 }
 
+/**
+ * 新建一个线程作为JVM的主线程启动JVM
+ * @param ifn JVM的启动函数在这个结构体中
+ * @param threadStackSize 0 不指定线程栈大小 交给jdk使用默认值
+ * @param argc 0 JVM的启动参数 没有指定jVM的启动参数 都是用默认的
+ * @param argv null
+ * @param mode JVM启动方式
+ *               - 1 Class启动方式
+ * @param what JVM启动加载的字节文件
+ *               - VMLoaderTest.java编译好的class字节码文件
+ * @param ret JVM退出方式
+ *              - 0 正常退出
+ * @return
+ */
 int
 ContinueInNewThread(InvocationFunctions* ifn, jlong threadStackSize,
                     int argc, char **argv,
