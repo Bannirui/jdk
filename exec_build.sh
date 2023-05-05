@@ -1,1 +1,0 @@
-make CONF=macosx-x86_64-server-slowdebug

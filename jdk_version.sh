@@ -1,1 +1,0 @@
-./build/macosx-x86_64-server-slowdebug/jdk/bin/java -version
