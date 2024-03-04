@@ -1,4 +1,9 @@
-# conf
+mac
+---
+
+### 1 conf
+
+```sh
 bash ./configure \
 --with-debug-level=slowdebug \
 --with-jvm-variants=server \
@@ -7,12 +12,22 @@ bash ./configure \
 --with-target-bits=64 \
 --disable-warnings-as-errors \
 --enable-dtrace
+```
 
-# compile-commands
+### 2 compile-commands
+
+```sh
 make CONF=macosx-x86_64-server-slowdebug compile-commands
+```
 
-# build
+### 3 build
+
+```sh
 make CONF=macosx-x86_64-server-slowdebug
+```
 
-# verify
+### 4 verify
+
+```sh
 ./build/macosx-x86_64-server-slowdebug/jdk/bin/java -version
+```
