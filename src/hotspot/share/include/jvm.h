@@ -80,6 +80,11 @@ JVM_IHashCode(JNIEnv *env, jobject obj);
 JNIEXPORT void JNICALL
 JVM_MonitorWait(JNIEnv *env, jobject obj, jlong ms);
 
+// JNIEXPORT __attribute__((visibility("default")))
+// 宏替换展开
+// __attribute__((visibility("default")))
+// void JVM_MonitorWait(JNIEnv *env, jobject obj, jlong ms);
+
 JNIEXPORT void JNICALL
 JVM_MonitorNotify(JNIEnv *env, jobject obj);
 
