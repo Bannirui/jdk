@@ -961,29 +961,49 @@ static markWord read_stable_mark(oop obj) {
 //   There are simple ways to "diffuse" the middle address bits over the
 //   generated hashCode values:
 
+/**
+ * hashcode的算法实现
+ * 提供了6种算法策略
+ *   - 算法0 随机数
+ *   - 算法1 内存地址+1个随机数->随机数
+ *   - 算法2 固定值1
+ *   - 算法3 自增序列
+ *   - 算法4 内存地址
+ *   - 算法5 当前线程有关的1个随机数+3个固定常数->随机数
+ */
 static inline intptr_t get_next_hash(Thread* self, oop obj) {
   intptr_t value = 0;
+  /**
+   * jvm的hashcode算法策略默认是5
+   * 通过启动参数可以指定 -XX:+UnlockExperimentalVMOptions -XX:hashCode=0
+   */
   if (hashCode == 0) {
     // This form uses global Park-Miller RNG.
     // On MP system we'll have lots of RW access to a global, so the
     // mechanism induces lots of coherency traffic.
+	// 随机数
     value = os::random();
   } else if (hashCode == 1) {
     // This variation has the property of being stable (idempotent)
     // between STW operations.  This can be useful in some of the 1-0
     // synchronization schemes.
+	// 内存地址和随机数计算出来的随机值
     intptr_t addr_bits = cast_from_oop<intptr_t>(obj) >> 3;
     value = addr_bits ^ (addr_bits >> 5) ^ GVars.stw_random;
   } else if (hashCode == 2) {
+	// 固定值1
     value = 1;            // for sensitivity testing
   } else if (hashCode == 3) {
+	// 自增序列
     value = ++GVars.hc_sequence;
   } else if (hashCode == 4) {
+	// 内存地址
     value = cast_from_oop<intptr_t>(obj);
   } else {
     // Marsaglia's xor-shift scheme with thread-specific state
     // This is probably the best overall implementation -- we'll
     // likely make this the default in future releases.
+	// 线程相关的1个随机值+3个常数 xor-shift算法计算出来的随机值
     unsigned t = self->_hashStateX;
     t ^= (t << 11);
     self->_hashStateX = self->_hashStateY;
@@ -995,6 +1015,7 @@ static inline intptr_t get_next_hash(Thread* self, oop obj) {
     value = v;
   }
 
+  // 64位系统下 markword中只留了31位存储hashcode 因此计算出来的hashcode结果确保至多只有31位
   value &= markWord::hash_mask;
   if (value == 0) value = 0xBAD;
   assert(value != markWord::no_hash, "invariant");
@@ -1002,6 +1023,7 @@ static inline intptr_t get_next_hash(Thread* self, oop obj) {
 }
 
 intptr_t ObjectSynchronizer::FastHashCode(Thread* self, oop obj) {
+  // jdk15默认关闭了偏向锁 需要手动指定才能开启 -XX:+UseBiasedLocking -XX:BiasedLockingStartupDelay=0
   if (UseBiasedLocking) {
     // NOTE: many places throughout the JVM do not expect a safepoint
     // to be taken here, in particular most operations on perm gen
@@ -1011,17 +1033,31 @@ intptr_t ObjectSynchronizer::FastHashCode(Thread* self, oop obj) {
     // added check of the bias pattern is to avoid useless calls to
     // thread-local storage.
     if (obj->mark().has_bias_pattern()) {
+	  // markword低3位是101 偏向锁状态
       // Handle for oop obj in case of STW safepoint
       Handle hobj(self, obj);
       // Relaxing assertion for bug 6320749.
       assert(Universe::verify_in_progress() ||
              !SafepointSynchronize::is_at_safepoint(),
              "biases should not be seen by VM thread here");
+	  // 撤销偏向锁
       BiasedLocking::revoke(hobj, JavaThread::current());
       obj = hobj();
       assert(!obj->mark().has_bias_pattern(), "biases should be revoked by now");
     }
   }
+
+  /**
+   * 至此 从对象的锁状态来看
+   *   - 之前是偏向锁状态的话 现在已经撤销到无锁状态 并且只要等着填充hashcode信息到[38...8]
+   *   - 轻量级锁
+   *   - 重量级锁
+   *   - 被打上了GC标志
+   * 所以问题就变成了
+   *   - 无锁状态的markwor填充hashcode
+   *   - 轻量级锁状态的markword填充hashcode
+   *   - 重量级锁状态的markword填充hashcode
+   */
 
   // hashCode() is a heap mutator ...
   // Relaxing assertion for bug 6320749.
@@ -1042,8 +1078,11 @@ intptr_t ObjectSynchronizer::FastHashCode(Thread* self, oop obj) {
     assert(!mark.has_bias_pattern(), "invariant");
 
     if (mark.is_neutral()) {            // if this is a normal header
+	  // 低3位001 无锁状态 填充hashcode
+	  // 无锁状态的markword位[38...8]存储的hashcode
       hash = mark.hash();
       if (hash != 0) {                  // if it has a hash, just return it
+		// 说明已经有别的线程设置好了hashcode 一个对象的hashcode只计算一次
         return hash;
       }
       hash = get_next_hash(self, obj);  // get a new hash
@@ -1058,6 +1097,7 @@ intptr_t ObjectSynchronizer::FastHashCode(Thread* self, oop obj) {
       // occurred or... so we fall thru to inflate the monitor for
       // stability and then install the hash.
     } else if (mark.has_monitor()) {
+	  // 低2位是10 重量级锁状态
       monitor = mark.monitor();
       temp = monitor->header();
       assert(temp.is_neutral(), "invariant: header=" INTPTR_FORMAT, temp.value());
@@ -1087,6 +1127,7 @@ intptr_t ObjectSynchronizer::FastHashCode(Thread* self, oop obj) {
       // Fall thru so we only have one place that installs the hash in
       // the ObjectMonitor.
     } else if (self->is_lock_owned((address)mark.locker())) {
+	  // 低2位是00 轻量级锁状态 并且当前线程是持锁线程
       // This is a stack lock owned by the calling thread so fetch the
       // displaced markWord from the BasicLock on the stack.
       temp = mark.displaced_mark_helper();

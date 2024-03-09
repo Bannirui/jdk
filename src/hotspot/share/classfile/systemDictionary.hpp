@@ -134,6 +134,7 @@ class ProtectionDomainCacheEntry;
 class GCTimer;
 class EventClassLoad;
 
+// 形参改名 形参后缀_knum为实参
 #define WK_KLASS_ENUM_NAME(kname)    kname##_knum
 
 // Certain classes, such as java.lang.Object and java.lang.String,
@@ -280,6 +281,13 @@ class SystemDictionary : AllStatic {
   enum WKID {
     NO_WKID = 0,
 
+    /**
+    * 宏展开
+    * 定义大量枚举
+    *   - Object_klass_knum, Java_lang_Obect_knum = Object_klass_knum,
+    *   - String_klass_knum, Java_lang_String_knum = String_klass_knum,
+    *   - ...
+    */
     #define WK_KLASS_ENUM(name, symbol) WK_KLASS_ENUM_NAME(name), WK_KLASS_ENUM_NAME(symbol) = WK_KLASS_ENUM_NAME(name),
     WK_KLASSES_DO(WK_KLASS_ENUM)
     #undef WK_KLASS_ENUM

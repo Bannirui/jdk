@@ -276,6 +276,11 @@ Thread::Thread() {
   _suspend_flags = 0;
 
   // thread-specific hashCode stream generator state - Marsaglia shift-xor form
+  /**
+   * 下面这4个成员将来用来计算hashcode值的
+   * jvm默认的hashcode计算方式用的就是xor-shift算法
+   * 本质就是1个随机数+3个常数->计算出一个随机数
+   */
   _hashStateX = os::random();
   _hashStateY = 842502087;
   _hashStateZ = 0x8767;    // (int)(3579807591LL & 0xffff) ;

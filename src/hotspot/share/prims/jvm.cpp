@@ -656,6 +656,10 @@ JVM_END
 // java.lang.Object ///////////////////////////////////////////////
 
 
+/**
+ * Object的hashCode方法实现
+ *   - handle是Object对象
+ */
 JVM_ENTRY(jint, JVM_IHashCode(JNIEnv* env, jobject handle))
   JVMWrapper("JVM_IHashCode");
   // as implemented in the classic virtual machine; return 0 if object is NULL

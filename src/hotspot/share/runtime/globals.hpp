@@ -698,7 +698,13 @@ const size_t minimumSymbolTableSize = 1024;
           "off). The check is performed on GuaranteedSafepointInterval "    \
           "or AsyncDeflationInterval.")                                     \
           range(0, 100)                                                     \
-                                                                            \
+  /* hashCode算法策略默认值5 共有 0 1 2 3 4 5这6中选择 可以通过启动参数指定 */      \
+  /* -XX:+UnlockExperimentalVMOptions -XX:hashCode=0 */                     \
+  /* -XX:+UnlockExperimentalVMOptions -XX:hashCode=1 */                     \
+  /* -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 */                     \
+  /* -XX:+UnlockExperimentalVMOptions -XX:hashCode=3 */                     \
+  /* -XX:+UnlockExperimentalVMOptions -XX:hashCode=4 */                     \
+  /* -XX:+UnlockExperimentalVMOptions -XX:hashCode=5 */                     \
   experimental(intx, hashCode, 5,                                           \
                "(Unstable) select hashCode generation algorithm")           \
                                                                             \
@@ -774,7 +780,7 @@ const size_t minimumSymbolTableSize = 1024;
                                                                             \
   product(bool, RestrictContended, true,                                    \
           "Restrict @Contended to trusted classes")                         \
-                                                                            \
+  /* UseBiasedLocking默认值是false 手动指定开启的参数-XX:+UseBiasedLocking */   \
   product(bool, UseBiasedLocking, false,                                    \
           "(Deprecated) Enable biased locking in JVM")                      \
                                                                             \

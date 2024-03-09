@@ -748,6 +748,10 @@ void BiasedLocking::revoke_own_lock(Handle obj, TRAPS) {
   }
 }
 
+/**
+ * 撤销偏向锁到无锁状态
+ * 关闭第3位的偏向锁标志 由1变成0
+ */
 void BiasedLocking::revoke(Handle obj, TRAPS) {
   assert(!SafepointSynchronize::is_at_safepoint(), "must not be called while at safepoint");
 
@@ -761,8 +765,21 @@ void BiasedLocking::revoke(Handle obj, TRAPS) {
     if (!mark.has_bias_pattern()) {
       return;
     }
-
-    if (mark.is_biased_anonymously()) {
+	/**
+	 * 偏向锁分两个状态
+	 *   - lock is biased toward given thread
+	 *   - lock is anonymously biased
+	 * 区别在于高54位
+	 *   - 如果记录的是线程id 就说明偏向锁有具体的偏向线程
+	 *   - 如果记录的是0 说明虽然是偏向锁 但是还没有具体偏向的线程
+	 *
+	 * 偏向锁撤销的本质就是
+	 *   - 关闭偏向锁标志位 第3位由1变成0 那么低3位就变成了001 也就是无锁状态
+	 *   - [6...3]记录的age信息不动
+	 *   - 新的markword设置给对象
+	 */
+	if (mark.is_biased_anonymously()) {
+	  // 匿名偏向锁
       // We are probably trying to revoke the bias of this object due to
       // an identity hash code computation. Try to revoke the bias
       // without a safepoint. This is possible if we can successfully
@@ -777,6 +794,7 @@ void BiasedLocking::revoke(Handle obj, TRAPS) {
       }
       mark = res_mark;  // Refresh mark with the latest value.
     } else {
+	  // 有具体偏向线程的偏向锁
       Klass* k = obj->klass();
       markWord prototype_header = k->prototype_header();
       if (!prototype_header.has_bias_pattern()) {

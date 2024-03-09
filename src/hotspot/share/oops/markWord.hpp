@@ -93,6 +93,7 @@ class JavaThread;
 
 class markWord {
  private:
+  // unsigned long int
   uintptr_t _value;
 
  public:
@@ -121,26 +122,53 @@ class markWord {
   uintptr_t value() const { return _value; }
 
   // Constants
+  // age占4位
   static const int age_bits                       = 4;
+  // 锁标志占2位
   static const int lock_bits                      = 2;
+  // 偏向锁标志占1位
   static const int biased_lock_bits               = 1;
+  // 57=64-4-2-1
   static const int max_hash_bits                  = BitsPerWord - age_bits - lock_bits - biased_lock_bits;
+  // hashcode最多占31位
   static const int hash_bits                      = max_hash_bits > 31 ? 31 : max_hash_bits;
+  // 64位系统下预留空占位1位
   static const int unused_gap_bits                = LP64_ONLY(1) NOT_LP64(0);
+  // 偏向锁记录偏向线程的时间占2位
   static const int epoch_bits                     = 2;
 
   // The biased locking code currently requires that the age bits be
   // contiguous to the lock bits.
+  // 偏向锁状态下的markword布局
+  /**
+  * 那么偏向锁的撤销本质是什么
+  *        [63...7] [6...3] [2] [1...0]
+  * 无锁    hashcode  age    0    01
+  * 偏向锁  线程信息    age    1    01
+  *
+  * 撤销偏向锁就是
+  *   - 低2位不变
+  *   - 第3位置0
+  *   - age不变
+  */
+  // 锁标志 区间是[1...0] 右侧偏移是0
   static const int lock_shift                     = 0;
+  // 偏向锁标志 区间是[2] 右侧偏移是2
   static const int biased_lock_shift              = lock_bits;
+  // age 区间是[6...3] 右侧偏移是3
   static const int age_shift                      = lock_bits + biased_lock_bits;
+  // 预留 区间是[7] 右侧偏移是7
   static const int unused_gap_shift               = age_shift + age_bits;
+  // epoch 区间[9...8] 右侧偏移8
+  // 线程id或者0 区间[63...10]
   static const int hash_shift                     = unused_gap_shift + unused_gap_bits;
   static const int epoch_shift                    = hash_shift;
 
   static const uintptr_t lock_mask                = right_n_bits(lock_bits);
   static const uintptr_t lock_mask_in_place       = lock_mask << lock_shift;
+  // 低3位置1 2进制表示为0111
   static const uintptr_t biased_lock_mask         = right_n_bits(lock_bits + biased_lock_bits);
+  // 2进制0111 16进制0x7
   static const uintptr_t biased_lock_mask_in_place= biased_lock_mask << lock_shift;
   static const uintptr_t biased_lock_bit_in_place = 1 << biased_lock_shift;
   static const uintptr_t age_mask                 = right_n_bits(age_bits);
@@ -154,14 +182,21 @@ class markWord {
   // Alignment of JavaThread pointers encoded in object header required by biased locking
   static const size_t biased_lock_alignment       = 2 << (epoch_shift + epoch_bits);
 
+  // 轻量级锁 低2位 00
   static const uintptr_t locked_value             = 0;
+  // 无锁 低3位 001
   static const uintptr_t unlocked_value           = 1;
+  // 重量级锁 低2位 10
   static const uintptr_t monitor_value            = 2;
+  // GC标记 低2位 11
   static const uintptr_t marked_value             = 3;
+  // 偏向锁 低3位 101
   static const uintptr_t biased_lock_pattern      = 5;
 
   static const uintptr_t no_hash                  = 0 ;  // no hash value assigned
+  // 低8位全是0 0000 0000
   static const uintptr_t no_hash_in_place         = (address_word)no_hash << hash_shift;
+  // 低2位是01 0000 0001
   static const uintptr_t no_lock_in_place         = unlocked_value;
 
   static const uint max_age                       = age_mask;
@@ -177,7 +212,12 @@ class markWord {
   // by the lower-level CAS-based locking code, although the runtime
   // fixes up biased locks to be compatible with it when a bias is
   // revoked.
+  /**
+  * 检查markword 校验是否是偏向锁状态
+  * 规则就是markword的低3位是不是2进制101 即0x5
+  */
   bool has_bias_pattern() const {
+	// markword & 0b111 把低3位求出来 偏向锁状态的低3位标志是0b101
     return (mask_bits(value(), biased_lock_mask_in_place) == biased_lock_pattern);
   }
   JavaThread* biased_locker() const {
@@ -219,6 +259,7 @@ class markWord {
   bool is_marked()   const {
     return (mask_bits(value(), lock_mask_in_place) == marked_value);
   }
+  // 校验低3位是001 无锁状态
   bool is_neutral()  const { return (mask_bits(value(), biased_lock_mask_in_place) == unlocked_value); }
 
   // Special temporary state of the markWord while being inflated.
@@ -263,6 +304,7 @@ class markWord {
   markWord set_unlocked() const {
     return markWord(value() | unlocked_value);
   }
+  // 低2位是00 轻量级锁状态
   bool has_locker() const {
     return ((value() & lock_mask_in_place) == locked_value);
   }
@@ -270,6 +312,7 @@ class markWord {
     assert(has_locker(), "check");
     return (BasicLock*) value();
   }
+  // 低2位是10 重量级锁状态
   bool has_monitor() const {
     return ((value() & monitor_value) != 0);
   }
@@ -325,6 +368,7 @@ class markWord {
   markWord set_marked()   { return markWord((value() & ~lock_mask_in_place) | marked_value); }
   markWord set_unmarked() { return markWord((value() & ~lock_mask_in_place) | unlocked_value); }
 
+  // 无锁状态和偏向锁状态 求出markword中位区间[6...3]的age值
   uint     age()           const { return mask_bits(value() >> age_shift, age_mask); }
   markWord set_age(uint v) const {
     assert((v & ~age_mask) == 0, "shouldn't overflow age field");
@@ -333,6 +377,7 @@ class markWord {
   markWord incr_age()      const { return age() == max_age ? markWord(_value) : set_age(age() + 1); }
 
   // hash operations
+  // 无锁状态 markword中位区间[38...8]的hashcode值
   intptr_t hash() const {
     return mask_bits(value() >> hash_shift, hash_mask);
   }
@@ -342,6 +387,7 @@ class markWord {
   }
 
   // Prototype mark for initialization
+  // 纯净的markword 语意是无锁标志 除了锁信息没有其他任何信息标志
   static markWord prototype() {
     return markWord( no_hash_in_place | no_lock_in_place );
   }

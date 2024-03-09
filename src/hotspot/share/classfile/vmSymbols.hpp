@@ -42,6 +42,7 @@
 
 // Useful sub-macros exported by this header file:
 
+// 形参改名 形参数挂上后缀_enum作为实参
 #define VM_SYMBOL_ENUM_NAME(name)    name##_enum
 #define VM_INTRINSIC_IGNORE(id, class, name, sig, flags) /*ignored*/
 #define VM_SYMBOL_IGNORE(id, name)                       /*ignored*/
@@ -747,6 +748,12 @@
 // annotate the method in the source code. The list below contains all
 // library intrinsics followed by bytecode intrinsics. Please also make sure to
 // add the declaration of the intrinsic to the approriate section of the list.
+/**
+ * 以hashCode函数为例
+ *  klass      = vmSymbols::java_lang_Object()
+ *  name       = vmSymbols::hashCode_name()
+ * signature  = vmSymbols::hashCode_signature()
+ */
 #define VM_INTRINSICS_DO(do_intrinsic, do_class, do_name, do_signature, do_alias)                                       \
   /* (1) Library intrinsics                                                                        */                   \
   do_intrinsic(_hashCode,                 java_lang_Object,       hashCode_name, void_int_signature,             F_R)   \
@@ -1525,12 +1532,38 @@ class vmSymbols: AllStatic {
   enum SID {
     NO_SID = 0,
 
-    #define VM_SYMBOL_ENUM(name, string) VM_SYMBOL_ENUM_NAME(name),
+	/**
+	* VM_SYMBOL_ENUM_NAME接收1个参数 拼上后缀_enum
+	* VM_SYMBOL_ENUM这个宏接收2个参数
+	*   - 把第1个参数传给VM_SYMBOL_ENUM_NAME宏拼上逗号
+	*
+	* 那么VM_SYMBOL_ENUM宏的作用就是把name转成name_enum,
+	*
+	* VM_SYMBOLS_DO宏接收2个宏
+	*  - 第1个宏就是上面的VM_SYMBOL_ENUM
+	*  - 第2个宏不干活
+	*
+	* 展开就是添加了很多枚举值 全限定包名
+	*   - java_base_enum,
+	*   - java_lang_System_enum,
+	*   - java_lang_Object_enum,
+	*   - java_lang_Class_enum,
+	*   - java_lang_Package_enum,
+	*   - void_int_signature_enum,
+	*   - int_signature_enum,
+	*   - ...
+	*/
+	#define VM_SYMBOL_ENUM(name, string) VM_SYMBOL_ENUM_NAME(name),
     VM_SYMBOLS_DO(VM_SYMBOL_ENUM, VM_ALIAS_IGNORE)
     #undef VM_SYMBOL_ENUM
 
     SID_LIMIT,
 
+	/**
+	* 为上面的枚举定义一些别名
+	*   - intptr_signature_enum = int_signature_enum,
+	*   - ...
+	*/
     #define VM_ALIAS_ENUM(name, def) VM_SYMBOL_ENUM_NAME(name) = VM_SYMBOL_ENUM_NAME(def),
     VM_SYMBOLS_DO(VM_SYMBOL_IGNORE, VM_ALIAS_ENUM)
     #undef VM_ALIAS_ENUM
@@ -1596,6 +1629,20 @@ class vmIntrinsics: AllStatic {
   enum ID {
     _none = 0,                      // not an intrinsic (default answer)
 
+    /**
+    * VM_INTRINSIC_ENUM这个宏的作用就是把id作为枚举值
+    * VM_INTRINSICS_DO接收5个宏
+    *   - 第1个宏就是VM_INTRINSIC_ENUM 列出id作为枚举值
+    *   - 其余4个都是不工作的
+    * 因此下面整个宏的作用就是把VM_INTRINSICS_DO的do_intrinsic的第1个参数作为枚举值
+    * 展开之后就是添加了很多枚举值
+    *   - _hashCode,
+    *   - _getClass,
+    *   - _clone,
+    *   - _notify,
+    *   - _notifyAll,
+    *   - ...
+    */
     #define VM_INTRINSIC_ENUM(id, klass, name, sig, flags)  id,
     VM_INTRINSICS_DO(VM_INTRINSIC_ENUM,
                      VM_SYMBOL_IGNORE, VM_SYMBOL_IGNORE, VM_SYMBOL_IGNORE, VM_ALIAS_IGNORE)

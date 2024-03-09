@@ -169,12 +169,14 @@ const int BytesPerLong       = 1 << LogBytesPerLong;
 const int LogBitsPerByte     = 3;
 const int LogBitsPerShort    = LogBitsPerByte + LogBytesPerShort;
 const int LogBitsPerInt      = LogBitsPerByte + LogBytesPerInt;
+// 6=3+3
 const int LogBitsPerWord     = LogBitsPerByte + LogBytesPerWord;
 const int LogBitsPerLong     = LogBitsPerByte + LogBytesPerLong;
 
 const int BitsPerByte        = 1 << LogBitsPerByte;
 const int BitsPerShort       = 1 << LogBitsPerShort;
 const int BitsPerInt         = 1 << LogBitsPerInt;
+// 64=1<<6
 const int BitsPerWord        = 1 << LogBitsPerWord;
 const int BitsPerLong        = 1 << LogBitsPerLong;
 
@@ -923,7 +925,9 @@ const intptr_t OneBit     =  1; // only right_most bit set in a word
 
 // get a word with the n.th or the right-most or left-most n bits set
 // (note: #define used only so that they can be used in enum constant definitions)
+// 1左移n位
 #define nth_bit(n)        (((n) >= BitsPerWord) ? 0 : (OneBit << (n)))
+// 1左移n位减1 相当于低n位全部置1
 #define right_n_bits(n)   (nth_bit(n) - 1)
 #define left_n_bits(n)    (right_n_bits(n) << (((n) >= BitsPerWord) ? 0 : (BitsPerWord - (n))))
 

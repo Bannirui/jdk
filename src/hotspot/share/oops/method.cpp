@@ -427,6 +427,13 @@ static Method* find_prefixed_native(Klass* k, Symbol* name, Symbol* signature, T
   return NULL; // not found
 }
 
+/**
+* 向类上注册native方法
+* - k 向哪个klass上注册
+* - name 注册到klass的方法名
+* - signature klass字节码格式的签名
+* - entry 要注册的方法本地方法的地址
+*/
 bool Method::register_native(Klass* k, Symbol* name, Symbol* signature, address entry, TRAPS) {
   Method* method = k->lookup_method(name, signature);
   if (method == NULL) {
