@@ -779,7 +779,7 @@ void BiasedLocking::revoke(Handle obj, TRAPS) {
 	 *   - 新的markword设置给对象
 	 */
 	if (mark.is_biased_anonymously()) {
-	  // 匿名偏向锁
+	  // 匿名偏向锁 还没有线程持有对象的偏向锁(如果某个线程持有了对象的偏向锁 markword里面肯定会记录对应线程的线程id的)
       // We are probably trying to revoke the bias of this object due to
       // an identity hash code computation. Try to revoke the bias
       // without a safepoint. This is possible if we can successfully
