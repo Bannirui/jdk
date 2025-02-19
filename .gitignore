@@ -23,3 +23,6 @@ NashornProfile.txt
 /.cproject
 /compile_commands.json
 /.cache
+
+[Bb][Uu][Ii][Ll][Dd]
+my_test/*.class
