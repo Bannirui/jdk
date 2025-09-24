@@ -1,6 +1,8 @@
 #!/bin/bash
 
-JDK_HOME=/home/dingrui/MyDev/code/cpp/jdk/build/linux-x86_64-server-slowdebug/jdk
+# demo: ./my_debug.sh HelloWorld
+
+JDK_HOME=$(pwd)/build/linux-x86_64-server-slowdebug/jdk
 JAVAC=${JDK_HOME}/bin/javac
 JAVA=${JDK_HOME}/bin/java
 
