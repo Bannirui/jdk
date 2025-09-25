@@ -25,4 +25,4 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "[*] Running $CLASS_NAME ..."
-gdb --args $JAVA -cp my_test $CLASS_NAME
+gdb --quiet --args $JAVA -cp my_test $CLASS_NAME
