@@ -20,8 +20,7 @@ RUN apt-get update && \
     util-linux \
     # cp rm等基础命令
     coreutils \
-    git \
-    wget \
+    git wget \
     # OpenJDK 21和编译openjdk-22源码需要的依赖
     openjdk-21-jdk autoconf libasound2-dev libcups2-dev libfontconfig1-dev libx11-dev libxext-dev libxrender-dev libxrandr-dev libxtst-dev libxt-dev file zip unzip gawk \
     && rm -rf /var/lib/apt/lists/*

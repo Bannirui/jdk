@@ -4,8 +4,29 @@
 
 ### 1 编译环境
 
-- 做一个名my-linux-dev的镜像 `docker build ./docker -t my-linux-dev`
-- 用镜像启个名为my-linux-dev的容器 `docker run --ulimit nofile=65535:65535 --rm -it --privileged --name my-linux-dev -v /etc/localtime:/etc/localtime:ro -v $PWD:/home/dev my-linux-dev`
+- 做一个名my-linux-dev的镜像
+
+```shell
+docker buildx build \
+  --build-arg http_proxy=http://host.docker.internal:7890 \
+  --build-arg https_proxy=http://host.docker.internal:7890 \
+  --build-arg all_proxy=socks5://host.docker.internal:7890 \
+  -t my-linux-dev ./docker --platform linux/amd64
+```
+
+- 用镜像启个名为my-linux-dev的容器
+
+```shell
+docker run \
+--ulimit nofile=65535:65535 \
+--cap-add=SYS_PTRACE \
+--security-opt seccomp=unconfined \
+--rm -it \
+--privileged \
+--name my-linux-dev \
+-v /etc/localtime:/etc/localtime:ro \
+-v $PWD:/home/dev my-linux-dev
+```
 
 ### 2 在docker中编译
 
