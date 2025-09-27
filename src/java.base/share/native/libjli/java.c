@@ -79,11 +79,16 @@ static jboolean listModules = JNI_FALSE;
 static char     *describeModule = NULL;
 static jboolean validateModules = JNI_FALSE;
 
+// pname-java
 static const char *_program_name;
+// lname-openjdk
 static const char *_launcher_name;
+// javaargs-0
 static jboolean _is_java_args = JNI_FALSE;
 static jboolean _have_classpath = JNI_FALSE;
+// fullversion-21-internal-adhoc.dingrui.jdk
 static const char *_fVersion;
+// cpwildcard-0
 static jboolean _wc_enabled = JNI_FALSE;
 
 /*
@@ -222,6 +227,22 @@ static jlong initialHeapSize    = 0;  /* initial heap size */
 
 /*
  * Entry point.
+ * 1 load  libjvm.so
+ * 2 parse arguments
+ * 3 get Classpath and set Classpath
+ * 4 inti jvm
+ * @param argc, argv-2 str
+ *                  argv[0] /home/dingrui/MyDev/cpp/jdk/build/linux-x86_64-server-slowdebug/jdk/bin/java
+ *                  argv[0] HelloWorld
+ * @param jargc, jargv-empty
+ * @param appclassc, appclassv-empty
+ * @param fullversion-21-internal-adhoc.dingrui.jdk
+ * @param dotversion-0.0
+ * @param pname-java
+ * @param lname-openjdk
+ * @javaargs-0
+ * @param cpwildcard-0
+ * @param javaw-0
  */
 JNIEXPORT int JNICALL
 JLI_Launch(int argc, char ** argv,              /* main argc, argv */
@@ -292,6 +313,11 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
         start = CurrentTimeMicros();
     }
 
+    /**
+     * jvmpath-/home/dingrui/MyDev/cpp/jdk/build/linux-x86_64-server-slowdebug/jdk/lib/server/libjvm.so
+     * ifn-3 func pointer, impl in libjvm.so
+     * look for these 3 func from jvm lib, named by JNI_xxx
+     */
     if (!LoadJavaVM(jvmpath, &ifn)) {
         return(6);
     }
@@ -2295,6 +2321,17 @@ IsWildCardEnabled()
     return _wc_enabled;
 }
 
+/**
+ *
+ * @param ifn
+ * @param threadStackSize
+ * @param argc
+ * @param argv
+ * @param mode
+ * @param what the command is `java HelloWorld` and what is HelloWorld, the java class
+ * @param ret
+ * @return
+ */
 int
 ContinueInNewThread(InvocationFunctions* ifn, jlong threadStackSize,
                     int argc, char **argv,
@@ -2326,6 +2363,7 @@ ContinueInNewThread(InvocationFunctions* ifn, jlong threadStackSize,
         args.what = what;
         args.ifn = *ifn;
 
+        // create JVM and callback to exec the func `main` in what(HelloWorld.java, method main)
         rslt = CallJavaMainInNewThread(threadStackSize, (void*)&args);
         /* If the caller has deemed there is an error we
          * simply return that, otherwise we return the value of

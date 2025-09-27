@@ -529,6 +529,11 @@ GetJREPath(char *path, jint pathsize, jboolean speculative)
     return JNI_FALSE;
 }
 
+/**
+ * look for the path, find JNI_XXX function in jvm lib, point to 3 func
+ * @param jvmpath the path of libjvm.so, /home/dingrui/MyDev/cpp/jdk/build/linux-x86_64-server-slowdebug/jdk/lib/server/libjvm.so
+ * @param ifn 3 func pointer
+ */
 jboolean
 LoadJavaVM(const char *jvmpath, InvocationFunctions *ifn)
 {
@@ -690,6 +695,7 @@ CallJavaMainInNewThread(jlong stack_size, void* args) {
 
     if (pthread_create(&tid, &attr, ThreadJavaMain, args) == 0) {
         void* tmp;
+        // cur thread will be blocked here
         pthread_join(tid, &tmp);
         rslt = (int)(intptr_t)tmp;
     } else {
