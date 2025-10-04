@@ -8,9 +8,6 @@
 
 ```shell
 docker buildx build \
-  --build-arg http_proxy=http://host.docker.internal:7890 \
-  --build-arg https_proxy=http://host.docker.internal:7890 \
-  --build-arg all_proxy=socks5://host.docker.internal:7890 \
   -t my-linux-dev ./docker --platform linux/amd64
 ```
 
@@ -47,6 +44,12 @@ bash ./configure \
 
 ```sh
 make CONF=linux-x86_64-server-slowdebug
+```
+
+if need IDEA support
+
+```sh
+make CONF=linux-x86_64-server-slowdebug compile-commands
 ```
 
 #### 2.3 java
