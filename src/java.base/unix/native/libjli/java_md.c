@@ -328,6 +328,7 @@ CreateExecutionEnvironment(int *pargc, char ***pargv,
     }
 
     jvmpath[0] = '\0';
+    // jvm type is server
     jvmtype = CheckJvmType(pargc, pargv, JNI_FALSE);
     if (JLI_StrCmp(jvmtype, "ERROR") == 0) {
         JLI_ReportErrorMessage(CFG_ERROR9);
