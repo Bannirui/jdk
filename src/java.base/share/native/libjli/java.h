@@ -235,11 +235,12 @@ enum LaunchMode {               // cf. sun.launcher.LauncherHelper
 static const char *launchModeNames[]
     = { "Unknown", "Main class", "JAR file", "Module", "Source" };
 
+// cpp pass to java thread, argc and argv for java main method
 typedef struct {
     int    argc;
     char **argv;
-    int    mode;
-    char  *what;
+    int    mode; // specify how to execute java app, class or jar
+    char  *what; // java main class, the method will be launched, `public static void main(String[] args);`
     InvocationFunctions ifn;
 } JavaMainArgs;
 

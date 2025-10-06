@@ -694,9 +694,16 @@ CallJavaMainInNewThread(jlong stack_size, void* args) {
     }
     pthread_attr_setguardsize(&attr, 0); // no pthread guard page on java threads
 
+    // ThreadJavaMain, this method will be executed immediately once new thread created by os, and os will pass args to ThreadJavaMain
     if (pthread_create(&tid, &attr, ThreadJavaMain, args) == 0) {
         void* tmp;
-        // cur thread will be blocked here
+        /**
+         * cur thread will be blocked here, how to terminate thread, it will terminate in one of following ways:
+         * 1 It calls pthread_exit(3), specifying an exit status value that is available to another thread in the same process that calls pthread_join(3).
+         * 2 It  returns  from start_routine().  This is equivalent to calling pthread_exit(3) with the value supplied in the return statement.
+         * 3 It is canceled (see pthread_cancel(3)).
+         * 4 Any of the threads in the process calls exit(3), or the main thread performs a return from main(). This causes the termination of all threads in the process.
+         */
         pthread_join(tid, &tmp);
         rslt = (int)(intptr_t)tmp;
     } else {

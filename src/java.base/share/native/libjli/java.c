@@ -317,6 +317,7 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
      * jvmpath-/home/dingrui/MyDev/cpp/jdk/build/linux-x86_64-server-slowdebug/jdk/lib/server/libjvm.so
      * ifn-3 func pointer, impl in libjvm.so
      * look for these 3 func from jvm lib, named by JNI_xxx
+     * it will be executed by libjvm if these functions called by someone
      */
     if (!LoadJavaVM(jvmpath, &ifn)) {
         return(6);
@@ -419,9 +420,9 @@ JavaMain(void* _args)
     JavaMainArgs *args = (JavaMainArgs *)_args;
     int argc = args->argc;
     char **argv = args->argv;
-    int mode = args->mode;
-    char *what = args->what;
-    InvocationFunctions ifn = args->ifn;
+    int mode = args->mode; // specify how to bootstrap, class or jar
+    char *what = args->what; // the java main class
+    InvocationFunctions ifn = args->ifn; // 3 import functions in jvm lib
 
     JavaVM *vm = 0;
     JNIEnv *env = 0;
@@ -2357,10 +2358,10 @@ ContinueInNewThread(InvocationFunctions* ifn, jlong threadStackSize,
         JavaMainArgs args;
         int rslt;
 
-        args.argc = argc;
-        args.argv = argv;
+        args.argc = argc; // 0
+        args.argv = argv; // null
         args.mode = mode;
-        args.what = what;
+        args.what = what; // java main class, callback by cpp since os thread created
         args.ifn = *ifn;
 
         // create JVM and callback to exec the func `main` in what(HelloWorld.java, method main)

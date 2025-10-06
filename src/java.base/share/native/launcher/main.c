@@ -53,6 +53,12 @@ WinMain(HINSTANCE inst, HINSTANCE previnst, LPSTR cmdline, int cmdshow)
     __initenv = _environ;
 
 #else /* JAVAW */
+/*
+ * Entry point for all os except windows, win's entry is above.
+ * for instance, .../java HelloWorld
+ * the 1st arg, argv[0], the executable, java's abs path
+ * the 2nt arg, the java program, coding in java and then compiled by javac
+ */
 JNIEXPORT int
 main(int argc, char **argv)
 {
