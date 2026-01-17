@@ -26,3 +26,5 @@ NashornProfile.txt
 
 [Bb][Uu][Ii][Ll][Dd]
 my_test/*.class
+
+**.log
