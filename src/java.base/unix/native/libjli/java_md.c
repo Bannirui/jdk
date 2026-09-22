@@ -531,9 +531,10 @@ GetJREPath(char *path, jint pathsize, jboolean speculative)
 }
 
 /**
- * look for the path, find JNI_XXX function in jvm lib, point to 3 func
- * @param jvmpath the path of libjvm.so, /home/dingrui/MyDev/cpp/jdk/build/linux-x86_64-server-slowdebug/jdk/lib/server/libjvm.so
- * @param ifn 3 func pointer
+ * 从动态库里面找到3个函数地址保存到ifn里面
+ * 单纯用系统函数dlopen/dlsym
+ * @param jvmpath libjvm.so动态库的路径 /home/dingrui/MyDev/cpp/jdk/build/linux-x86_64-server-slowdebug/jdk/lib/server/libjvm.so
+ * @param ifn 保存动态库的3个函数地址
  */
 jboolean
 LoadJavaVM(const char *jvmpath, InvocationFunctions *ifn)
@@ -548,7 +549,7 @@ LoadJavaVM(const char *jvmpath, InvocationFunctions *ifn)
         JLI_ReportErrorMessage(DLL_ERROR2, jvmpath, dlerror());
         return JNI_FALSE;
     }
-
+    // jvm动态库的这3个函数实现在jni.cpp里面
     ifn->CreateJavaVM = (CreateJavaVM_t)
         dlsym(libjvm, "JNI_CreateJavaVM");
     if (ifn->CreateJavaVM == NULL) {

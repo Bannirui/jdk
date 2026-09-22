@@ -226,14 +226,15 @@ static jlong initialHeapSize    = 0;  /* initial heap size */
 #endif
 
 /*
- * Entry point.
- * 1 load  libjvm.so
- * 2 parse arguments
- * 3 get Classpath and set Classpath
- * 4 inti jvm
+ * 必要的操作
+ * 1 libjvm.so的加载
+ * 2 参数的解析
+ * 3 Classpath的获取和设置
+ * 4 系统属性设置
+ * 5 JVM初始化
  * @param argc, argv-2 str
  *                  argv[0] /home/dingrui/MyDev/cpp/jdk/build/linux-x86_64-server-slowdebug/jdk/bin/java
- *                  argv[0] HelloWorld
+ *                  argv[1] HelloWorld
  * @param jargc, jargv-empty
  * @param appclassc, appclassv-empty
  * @param fullversion-21-internal-adhoc.dingrui.jdk
@@ -314,10 +315,7 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
     }
 
     /**
-     * jvmpath-/home/dingrui/MyDev/cpp/jdk/build/linux-x86_64-server-slowdebug/jdk/lib/server/libjvm.so
-     * ifn-3 func pointer, impl in libjvm.so
-     * look for these 3 func from jvm lib, named by JNI_xxx
-     * it will be executed by libjvm if these functions called by someone
+     * jvmpath=/home/dingrui/MyDev/cpp/jdk/build/linux-x86_64-server-slowdebug/jdk/lib/server/libjvm.so jvmpath就是libjvm.so的存储路径
      */
     if (!LoadJavaVM(jvmpath, &ifn)) {
         return(6);
@@ -363,7 +361,7 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
 
     /* Set the -Dsun.java.launcher pseudo property */
     SetJavaLauncherProp();
-
+    // 把jvm动态库里面3个函数地址保存在ifn里面 初始化jvm的时候要用
     return JVMInit(&ifn, threadStackSize, argc, argv, mode, what, ret);
 }
 /*
