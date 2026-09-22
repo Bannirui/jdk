@@ -412,15 +412,27 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
     } while (JNI_FALSE)
 
 
+/**
+ * 找到java启动类的main方法 然后执行它
+ * 所有的步骤都是在当前线程的控制下 当控制转移到了java启动的main方法后 当前线程就不做其他事情了
+ * 等启动类的main方法执行完返回之后
+ *   1 清理和关闭JVM
+ *   2 调用本地函数jni_DetachCurrentThread断开与主线程的连接
+ *   3 等待所有非守护线程全部执行结束
+ *   4 调用本地函数jni_DestroyJavaVM对JVM执行销毁
+ */
 int
 JavaMain(void* _args)
 {
     JavaMainArgs *args = (JavaMainArgs *)_args;
     int argc = args->argc;
     char **argv = args->argv;
-    int mode = args->mode; // specify how to bootstrap, class or jar
-    char *what = args->what; // the java main class
-    InvocationFunctions ifn = args->ifn; // 3 import functions in jvm lib
+    // specify how to bootstrap, class or jar
+    int mode = args->mode;
+    // java的启动类 比如用命令java HelloWorld 那么HelleWorld就是启动类
+    char *what = args->what;
+    // libjvm.so里面3个函数的地址
+    InvocationFunctions ifn = args->ifn;
 
     JavaVM *vm = 0;
     JNIEnv *env = 0;
@@ -437,6 +449,7 @@ JavaMain(void* _args)
 
     /* Initialize the virtual machine */
     start = CurrentTimeMicros();
+    // 初始化JVM 给JavaVM和JNIEnv对象正确赋值
     if (!InitializeJVM(&vm, &env, &ifn)) {
         JLI_ReportErrorMessage(JVM_ERROR1);
         exit(1);
@@ -530,6 +543,7 @@ JavaMain(void* _args)
      * This method also correctly handles launching existing JavaFX
      * applications that may or may not have a Main-Class manifest entry.
      */
+    // 加载Java的启动类
     mainClass = LoadMainClass(env, mode, what);
     CHECK_EXCEPTION_NULL_LEAVE(mainClass);
     /*
@@ -579,9 +593,11 @@ JavaMain(void* _args)
 
     switch (mainType) {
     case 0: {
+        // 从java启动类里面找main方法对应的唯一id
         mainID = (*env)->GetStaticMethodID(env, mainClass, "main",
                                            "([Ljava/lang/String;)V");
         CHECK_EXCEPTION_NULL_LEAVE(mainID);
+        // 调用java启动类的main方法
         (*env)->CallStaticVoidMethod(env, mainClass, mainID, mainArgs);
         break;
         }
@@ -2322,8 +2338,8 @@ IsWildCardEnabled()
 
 /**
  *
- * @param ifn
- * @param threadStackSize
+ * @param ifn 保存了libjvm.so的3个函数的地址
+ * @param threadStackSize 默认值64KB
  * @param argc
  * @param argv
  * @param mode
@@ -2359,7 +2375,9 @@ ContinueInNewThread(InvocationFunctions* ifn, jlong threadStackSize,
         args.argc = argc; // 0
         args.argv = argv; // null
         args.mode = mode;
-        args.what = what; // java main class, callback by cpp since os thread created
+        // java启动类
+        args.what = what;
+        // libjvm.so的3个函数地址
         args.ifn = *ifn;
 
         // create JVM and callback to exec the func `main` in what(HelloWorld.java, method main)

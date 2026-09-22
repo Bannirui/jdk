@@ -696,6 +696,7 @@ CallJavaMainInNewThread(jlong stack_size, void* args) {
     pthread_attr_setguardsize(&attr, 0); // no pthread guard page on java threads
 
     // ThreadJavaMain, this method will be executed immediately once new thread created by os, and os will pass args to ThreadJavaMain
+    // 系统调用创建线程 CPU调度到ThreadJavaMain函数
     if (pthread_create(&tid, &attr, ThreadJavaMain, args) == 0) {
         void* tmp;
         /**
@@ -705,6 +706,7 @@ CallJavaMainInNewThread(jlong stack_size, void* args) {
          * 3 It is canceled (see pthread_cancel(3)).
          * 4 Any of the threads in the process calls exit(3), or the main thread performs a return from main(). This causes the termination of all threads in the process.
          */
+        // 当前线程阻塞在这里
         pthread_join(tid, &tmp);
         rslt = (int)(intptr_t)tmp;
     } else {
@@ -724,6 +726,7 @@ CallJavaMainInNewThread(jlong stack_size, void* args) {
 /* Coarse estimation of number of digits assuming the worst case is a 64-bit pid. */
 #define MAX_PID_STR_SZ   20
 
+// 启动JVM的入口
 int
 JVMInit(InvocationFunctions* ifn, jlong threadStackSize,
         int argc, char **argv,
