@@ -207,12 +207,19 @@ Klass::Klass(KlassKind kind) : _kind(kind),
   set_super_check_offset(in_bytes(primary_supers_offset()));
 }
 
+/*
+ * @param etype 数组元素的类型 
+ */
 jint Klass::array_layout_helper(BasicType etype) {
   assert(etype >= T_BOOLEAN && etype <= T_OBJECT, "valid etype");
   // Note that T_ARRAY is not allowed here.
+  // 数组头元素的字节数
   int  hsize = arrayOopDesc::base_offset_in_bytes(etype);
+  // 数组元素的大小
   int  esize = type2aelembytes(etype);
+  // 数组元素类型
   bool isobj = (etype == T_OBJECT);
+  // 数组元素类型 对象类型还是Java基本类型
   int  tag   =  isobj ? _lh_array_tag_obj_value : _lh_array_tag_type_value;
   int lh = array_layout_helper(tag, hsize, etype, exact_log2(esize));
 
@@ -236,7 +243,11 @@ bool Klass::can_be_primary_super_slow() const {
     return true;
 }
 
+/**
+ * @param k 当前类的直接父类
+ */
 void Klass::initialize_supers(Klass* k, Array<InstanceKlass*>* transitive_interfaces, TRAPS) {
+  // 当前类的父类可能是NULL 比如Object的父类就是NULL
   if (k == nullptr) {
     set_super(nullptr);
     _primary_supers[0] = this;
@@ -244,23 +255,30 @@ void Klass::initialize_supers(Klass* k, Array<InstanceKlass*>* transitive_interf
   } else if (k != super() || k == vmClasses::Object_klass()) {
     assert(super() == nullptr || super() == vmClasses::Object_klass(),
            "initialize this only once to a non-trivial value");
+    // 记录直接父类
     set_super(k);
     Klass* sup = k;
+    // 父类的继承深度
     int sup_depth = sup->super_depth();
+    // 限制_primary_suppers数组只能放8个类
     juint my_depth  = MIN2(sup_depth + 1, (int)primary_super_limit());
     if (!can_be_primary_super_slow())
       my_depth = primary_super_limit();
     for (juint i = 0; i < my_depth; i++) {
+      // 把直接父类的继承链放到自己的primary_suppers数组 再补充上自己这个类就完整了
       _primary_supers[i] = sup->_primary_supers[i];
     }
     Klass* *super_check_cell;
     if (my_depth < primary_super_limit()) {
+      // 类的继承深度没有超过8个 _primary_suppers能放得下
       _primary_supers[my_depth] = this;
       super_check_cell = &_primary_supers[my_depth];
     } else {
       // Overflow of the primary_supers array forces me to be secondary.
+      // 类的继承深度超过8个了 要把部分父类放到_secondary_suppers数组里面
       super_check_cell = &_secondary_super_cache;
     }
+    // super_check_offset指向的就是primary_suppers自己的槽位
     set_super_check_offset(u4((address)super_check_cell - (address) this));
 
 #ifdef ASSERT
@@ -428,6 +446,7 @@ void Klass::append_to_sibling_list() {
   debug_only(verify();)
   // add ourselves to superklass' subklass list
   InstanceKlass* super = superklass();
+  // 什么时候才会有兄弟链的情况 大家都是派生于一个直接父类的时候
   if (super == nullptr) return;     // special case: class Object
   assert((!super->is_interface()    // interfaces cannot be supers
           && (super->superklass() == nullptr || !is_interface())),
@@ -437,6 +456,7 @@ void Klass::append_to_sibling_list() {
   super->clean_subklass();
 
   for (;;) {
+    // 兄弟链上的第一个 也就是单链表的表头
     Klass* prev_first_subklass = Atomic::load_acquire(&_super->_subklass);
     if (prev_first_subklass != nullptr) {
       // set our sibling to be the superklass' previous first subklass

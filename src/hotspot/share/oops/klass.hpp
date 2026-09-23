@@ -87,6 +87,7 @@ class Klass : public Metadata {
 
   // note: put frequently-used fields together at start of klass structure
   // for better cache behavior (may not make much of a difference but sure won't hurt)
+  // 限制_primary_suppers数组里面最多只能放8个类
   enum { _primary_super_limit = 8 };
 
   // The "layout helper" is a combined descriptor of object layout.
@@ -115,6 +116,12 @@ class Klass : public Metadata {
   //
   // Final note:  This comes first, immediately after C++ vtable,
   // because it is frequently queried.
+
+  /**
+   * 数组类型时 _layout_helper的最高位是1 说明是负数
+   * 对象类型时 _layout_helper的最高位是0 说明是正数
+   * 只要判断_layout_helper就可以区分数组和对象
+   */
   jint        _layout_helper;
 
   // Klass kind used to resolve the runtime type of the instance.
@@ -131,6 +138,7 @@ class Klass : public Metadata {
   //
   // Where to look to observe a supertype (it is &_secondary_super_cache for
   // secondary supers, else is &_primary_supers[depth()].
+  // 去Klass的哪个位置检查类型 primary_suppers和secondary_suppers里面都是类型 它指向哪儿可以快速进行检查类型 指向的是primary_suppers里面自己的槽位
   juint       _super_check_offset;
 
   // Class name.  Instance classes: java/lang/String, etc.  Array classes: [I,
@@ -138,18 +146,25 @@ class Klass : public Metadata {
   Symbol*     _name;
 
   // Cache of last observed secondary supertype
+  // 用来加快判断父子关系的 secondary_suppers里面存放的是当前类实现了哪些接口 这个指针缓存的是最近一次对secondary_suppers数组的检索结果 利用的是局部性原理 如果刚好命中缓存就不用再次遍历secondary_suppers数组了
   Klass*      _secondary_super_cache;
   // Array of all secondary supertypes
+  // 首先这个数组里面是要存储当前类的所有实现接口的包括直接和间接实现的接口 其次当类的继承深度太长超过8个时 会把_primary_suppers里面放不下的类也放到这个数组里面
   Array<Klass*>* _secondary_supers;
   // Ordered list of all primary supertypes
+  // _primary_suppers数组的长度是8 当类的父类继承链中多于8个时 多出来的父类会存到_secondary_suppers数组里面
+  // 类的继承链是保证按照顺序存储在数组里面的 从根到自己的顺序
   Klass*      _primary_supers[_primary_super_limit];
   // java/lang/Class instance mirroring this class
   OopHandle   _java_mirror;
   // Superclass
+  // Java是单继承体系 找到当前类型的直接父类
   Klass*      _super;
   // First subclass (null if none); _subklass->next_sibling() is next one
+  // 当前类的子类 有多个子类怎么办 所有的子类就是兄弟 这个兄弟就是单链表 用next_sibling串起来
   Klass* volatile _subklass;
   // Sibling link (or null); links all subklasses of a klass
+  // 兄弟链
   Klass* volatile _next_sibling;
 
   // All klasses loaded by a class loader are chained through these links
@@ -412,8 +427,9 @@ protected:
   static const int _lh_header_size_mask        = right_n_bits(BitsPerByte);  // shifted mask
   static const int _lh_array_tag_bits          = 2;
   static const int _lh_array_tag_shift         = BitsPerInt - _lh_array_tag_bits;
+  // tag的枚举 数组元素类型是对象
   static const int _lh_array_tag_obj_value     = ~0x01;   // 0x80000000 >> 30
-
+  // tag的枚举 数组元素类型是Java基本类型
   static const unsigned int _lh_array_tag_type_value = 0Xffffffff; // ~0x00,  // 0xC0000000 >> 30
 
   static int layout_helper_size_in_bytes(jint lh) {
@@ -472,7 +488,17 @@ protected:
            "sanity. l2esz: 0x%x for lh: 0x%x", (uint)l2esz, (uint)lh);
     return l2esz;
   }
+
+  /**
+   * 数组类型时 _layout_helper的最高位是1 说明是负数
+   * 对象类型时 _layout_helper的最高位是0 说明是正数
+   * 只要判断_layout_helper就可以区分数组和对象
+   */
   static jint array_layout_helper(jint tag, int hsize, BasicType etype, int log2_esize) {
+    // [31:30] tag占2位 数组元素类型是对象时=10 数组元素类型是Java基本类型时=11
+    // [29:16] hsize占14位
+    // [15:8] etype占8位
+    // [7:0] log2_esize占8位
     return (tag        << _lh_array_tag_shift)
       |    (hsize      << _lh_header_size_shift)
       |    ((int)etype << _lh_element_type_shift)
@@ -500,15 +526,22 @@ protected:
   // subclass check
   bool is_subclass_of(const Klass* k) const;
   // subtype check: true if is_subclass_of, or if k is interface and receiver implements it
+  /**
+   * @param k 判断当前类是不是k的子类 k可能是接口 如果当前类实现了k接口也返回true
+   */
   bool is_subtype_of(Klass* k) const {
+    // k的继承体系里面 super_check_offset指向的就k自己这个类型在k的primary_supers数组的槽位
     juint    off = k->super_check_offset();
+    // 如果k是当前类的父类 那么从当前类的primary_suppers的继承体系拿到off位置的类型一定就是k 这个得益于primary_suppers里面存放的是从根到派生的顺序
     Klass* sup = *(Klass**)( (address)this + off );
     const juint secondary_offset = in_bytes(secondary_super_cache_offset());
     if (sup == k) {
       return true;
     } else if (off != secondary_offset) {
+      // 这个分支利用的是局部性原理 缓存了最近的一次secondary_suppers检索结果
       return false;
     } else {
+      // 遍历secondary_suppers看看当前类是不是k的派生
       return search_secondary_supers(k);
     }
   }

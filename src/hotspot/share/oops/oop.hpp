@@ -49,12 +49,15 @@ class FilteringClosure;
 class PSPromotionManager;
 class ParCompactionManager;
 
+// 占16字节 开启压缩指针时占12字节
 class oopDesc {
   friend class VMStructs;
   friend class JVMCIVMStructs;
  private:
+  // 占8字节
   volatile markWord _mark;
   union _metadata {
+    // 占8字节 在压缩指针的情况下占4字节
     Klass*      _klass;
     narrowKlass _compressed_klass;
   } _metadata;
