@@ -215,6 +215,10 @@ protected:
   Klass(KlassKind kind);
   Klass() : _kind(UnknownKlassKind) { assert(DumpSharedSpaces || UseSharedSpaces, "only for cds"); }
 
+  /**
+   * 重载了new运算符 目的是控制Klass类实例的空间放在元数据区
+   * Klass一般不会卸载 因此没有放到堆中进行管理 堆是垃圾回收的重点区域 将类的元数据放到堆中时回收的效率会降低
+   */
   void* operator new(size_t size, ClassLoaderData* loader_data, size_t word_size, TRAPS) throw();
 
  public:

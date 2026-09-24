@@ -432,7 +432,9 @@ const char* InstanceKlass::nest_host_error() {
   }
 }
 
+// HotSpot VM创建Klass类的实例过程
 InstanceKlass* InstanceKlass::allocate_instance_klass(const ClassFileParser& parser, TRAPS) {
+  // 计算创建InstanceKlass实例要多大内存空间=InstanKlass本身大小+vtable+itable+nonstatic_oop_map+接口的实现类
   const int size = InstanceKlass::size(parser.vtable_size(),
                                        parser.itable_size(),
                                        nonstatic_oop_map_size(parser.total_oop_map_count()),

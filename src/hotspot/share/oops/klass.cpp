@@ -192,6 +192,7 @@ Method* Klass::uncached_lookup_method(const Symbol* name, const Symbol* signatur
 }
 
 void* Klass::operator new(size_t size, ClassLoaderData* loader_data, size_t word_size, TRAPS) throw() {
+  // 在元数据区分配内存空间
   return Metaspace::allocate(loader_data, word_size, MetaspaceObj::ClassType, THREAD);
 }
 
