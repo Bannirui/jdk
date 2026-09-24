@@ -225,6 +225,7 @@ class InstanceKlass: public Klass {
 
   volatile ClassState _init_state;          // state of class
 
+  // 引用类型 表示当前的InstanceRefKlass实例的引用类型 对应的是referenceType的枚举 强软弱虚
   u1              _reference_type;          // reference type
 
   // State is set either at parse time or while executing, atomically to not disturb other state

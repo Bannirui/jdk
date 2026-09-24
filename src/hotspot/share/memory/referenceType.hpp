@@ -29,11 +29,17 @@
 
 // ReferenceType is used to distinguish between java/lang/ref/Reference subclasses
 
+// IntanceRefKlass的引用类型 在InstanceKlass中维护了成员reference_type
 enum ReferenceType {
+  // 强引用
   REF_NONE,      // Regular class
+  // 软引用 SoftReference及其子类
   REF_SOFT,      // Subclass of java/lang/ref/SoftReference
+  // 弱引用 WeakReference及其子类
   REF_WEAK,      // Subclass of java/lang/ref/WeakReference
+  // Finalizer相关的引用
   REF_FINAL,     // Subclass of java/lang/ref/FinalReference
+  // 虚引用 PhantomReference及其子类
   REF_PHANTOM    // Subclass of java/lang/ref/PhantomReference
 };
 
