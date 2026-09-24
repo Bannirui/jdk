@@ -118,9 +118,12 @@ class Klass : public Metadata {
   // because it is frequently queried.
 
   /**
-   * 数组类型时 _layout_helper的最高位是1 说明是负数
-   * 对象类型时 _layout_helper的最高位是0 说明是正数
-   * 只要判断_layout_helper就可以区分数组和对象
+   * 对象的布局描述
+   * 这个值只可能是3种情况
+   *   - 1 什么都不是 用0表示
+   *   - 2 普通的Java类型 最高位是0 用正数表示 含义是这个Java类的对象创建需要的内存大小 多少个字节
+   *   - 3 Java数组类型 最高位是1 用负数表示 它是一个组合值 包含了tag hsize etype esize
+   * 只要判断_layout_helper是正数还是负数就可以区分数组和对象
    */
   jint        _layout_helper;
 
@@ -508,9 +511,14 @@ protected:
     return (size << LogBytesPerWord)
       |    (slow_path_flag ? _lh_instance_slow_path_bit : 0);
   }
+  /**
+   * @param lh 不是数组 是普通类型时 layout_helper表示Java类创建的对象占用多少字节的内存 字节转换成字 1个字=8个字节 所以单位转换是除以8 也就是右移3位
+   * @return Java类的对象占用内存多少个字
+   */
   static int layout_helper_to_size_helper(jint lh) {
     assert(lh > (jint)_lh_neutral_value, "must be instance");
     // Note that the following expression discards _lh_instance_slow_path_bit.
+    // 字节单位转换字单位 除以8 就是右移3位
     return lh >> LogBytesPerWord;
   }
   // Out-of-line version computes everything based on the etype:

@@ -217,6 +217,11 @@ FORBID_C_FUNCTION(void* reallocf(void *ptr, size_t size), "don't use");
 const int LogBytesPerShort   = 1;
 const int LogBytesPerInt     = 2;
 #ifdef _LP64
+/**
+ * 单位转换 1个字=8字节
+ * 字->字节 乘以8 左移3位
+ * 字节->字 除以8 右移3位
+ */
 const int LogBytesPerWord    = 3;
 #else
 const int LogBytesPerWord    = 2;

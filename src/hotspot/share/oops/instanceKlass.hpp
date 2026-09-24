@@ -966,6 +966,9 @@ public:
   inline InstanceKlass* volatile* adr_implementor() const;
 
   // Use this to return the size of an instance in heap words:
+  /**
+   * @return Java类创建的对象占用内存多少个字
+   */
   int size_helper() const {
     return layout_helper_to_size_helper(layout_helper());
   }
