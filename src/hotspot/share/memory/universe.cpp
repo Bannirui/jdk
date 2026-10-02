@@ -353,6 +353,7 @@ void Universe::genesis(TRAPS) {
 
     vmSymbols::initialize();
 
+    // 创建Java基本类型的mirror值
     SystemDictionary::initialize(CHECK);
 
     // Create string constants
@@ -456,6 +457,7 @@ void Universe::genesis(TRAPS) {
   #endif
 }
 
+// Hotspot VM启动过程中会创建Java基本类型的mirror值
 void Universe::initialize_basic_type_mirrors(TRAPS) {
 #if INCLUDE_CDS_JAVA_HEAP
     if (UseSharedSpaces &&
@@ -477,6 +479,7 @@ void Universe::initialize_basic_type_mirrors(TRAPS) {
       for (int i = T_BOOLEAN; i < T_VOID+1; i++) {
         BasicType bt = (BasicType)i;
         if (!is_reference_type(bt)) {
+          // 创建表示Java基本类型的java.lang.Class对象 该对象用oop表示
           oop m = java_lang_Class::create_basic_type_mirror(type2name(bt), bt, CHECK);
           _basic_type_mirrors[i] = OopHandle(vm_global(), m);
         }

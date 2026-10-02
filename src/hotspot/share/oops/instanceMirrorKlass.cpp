@@ -45,6 +45,7 @@ size_t InstanceMirrorKlass::instance_size(Klass* k) {
   return size_helper();
 }
 
+// 创建oop表示java.lang.Class对象
 instanceOop InstanceMirrorKlass::allocate_instance(Klass* k, TRAPS) {
   // Query before forming handle.
   size_t size = instance_size(k);

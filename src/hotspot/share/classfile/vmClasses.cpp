@@ -164,6 +164,7 @@ void vmClasses::resolve_all(TRAPS) {
   java_lang_Class::compute_offsets();
 
   // Fixup mirrors for classes loaded before java.lang.Class.
+  // Java基本类型的mirror值
   Universe::initialize_basic_type_mirrors(CHECK);
   Universe::fixup_mirrors(CHECK);
 

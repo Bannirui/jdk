@@ -1606,6 +1606,7 @@ void SystemDictionary::initialize(TRAPS) {
 #endif
 
   // Resolve basic classes
+  // 创建Java基本类型的mirror值
   vmClasses::resolve_all(CHECK);
   // Resolve classes used by archived heap objects
   if (UseSharedSpaces) {
