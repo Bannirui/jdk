@@ -42,7 +42,11 @@ class ObjArrayKlass : public ArrayKlass {
  private:
   // If you add a new field that points to any metaspace object, you
   // must add this field to ObjArrayKlass::metaspace_pointers_do().
+  // 数组的组件类型 不是元素类型
   Klass* _element_klass;            // The klass of the elements of this array type
+  // 数组的元素类型 可以是InstanceKlass或者TypeArrayKlass 因此可能是元素类型也可能是TypeArrayKlass
+  // 一维基本类型的数组用TypeArrayKlass表示
+  // 二维基本类型数组用ObjArrayKlass表示 它的bottom_klass是TypeArrayKlass
   Klass* _bottom_klass;             // The one-dimensional type (InstanceKlass or TypeArrayKlass)
 
   // Constructor
