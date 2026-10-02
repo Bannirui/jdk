@@ -101,8 +101,10 @@ ArrayKlass::ArrayKlass(Symbol* name, KlassKind kind) :
 
 // Initialization of vtables and mirror object is done separately from base_create_array_klass,
 // since a GC can happen. At this point all instance variables of the ArrayKlass must be setup.
+// 初始化TypeArrayKlass中的属性
 void ArrayKlass::complete_create_array_klass(ArrayKlass* k, Klass* super_klass, ModuleEntry* module_entry, TRAPS) {
   k->initialize_supers(super_klass, nullptr, CHECK);
+  // 初始化vtable
   k->vtable().initialize_vtable();
 
   // During bootstrapping, before java.base is defined, the module_entry may not be present yet.
@@ -111,6 +113,7 @@ void ArrayKlass::complete_create_array_klass(ArrayKlass* k, Klass* super_klass, 
   assert((module_entry != nullptr) || ((module_entry == nullptr) && !ModuleEntryTable::javabase_defined()),
          "module entry not available post " JAVA_BASE_NAME " definition");
   oop module = (module_entry != nullptr) ? module_entry->module() : (oop)nullptr;
+  // 初始化了java.lang.Class对象中静态字段的值 这样静态字段就可以正常使用了
   java_lang_Class::create_mirror(k, Handle(THREAD, k->class_loader()), Handle(THREAD, module), Handle(), Handle(), CHECK);
 }
 

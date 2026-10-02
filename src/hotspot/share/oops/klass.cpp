@@ -209,6 +209,11 @@ Klass::Klass(KlassKind kind) : _kind(kind),
 }
 
 /*
+ * 对于数组而言 它的laout_helper是个组合值
+ * 2位  tag 10表示数组元素是对象类型 11表示数组元素是Java基本类型
+ * 14位 hsize
+ * 8位  etype
+ * 8位  esize
  * @param etype 数组元素的类型 
  */
 jint Klass::array_layout_helper(BasicType etype) {
@@ -218,7 +223,7 @@ jint Klass::array_layout_helper(BasicType etype) {
   int  hsize = arrayOopDesc::base_offset_in_bytes(etype);
   // 数组元素的大小
   int  esize = type2aelembytes(etype);
-  // 数组元素类型
+  // 数组元素类型 Java的基本类型或者是对象类型
   bool isobj = (etype == T_OBJECT);
   // 数组元素类型 对象类型还是Java基本类型
   int  tag   =  isobj ? _lh_array_tag_obj_value : _lh_array_tag_type_value;

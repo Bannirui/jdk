@@ -39,6 +39,7 @@ class TypeArrayKlass : public ArrayKlass {
   static const KlassKind Kind = TypeArrayKlassKind;
 
  private:
+  // 数组允许的最大长度是多少
   jint _max_length;            // maximum number of elements allowed in an array
 
   // Constructor

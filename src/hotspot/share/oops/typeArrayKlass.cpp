@@ -42,18 +42,25 @@
 #include "runtime/handles.inline.hpp"
 #include "utilities/macros.hpp"
 
+/**
+ * 给Java基本类型创建TypeArrayKlass实例
+ * @param type 哪种Java基本类型
+ */
 TypeArrayKlass* TypeArrayKlass::create_klass(BasicType type,
                                       const char* name_str, TRAPS) {
+  // 在Hotspot中 所有的字符串都是用Symbol实例表示的 以达到重用的目的
   Symbol* sym = nullptr;
   if (name_str != nullptr) {
     sym = SymbolTable::new_permanent_symbol(name_str);
   }
 
+  // 用系统类加载器加载数组类型
   ClassLoaderData* null_loader_data = ClassLoaderData::the_null_class_loader_data();
-
+  // 创建TypeArrayKlass并完成部分属性的初始化
   TypeArrayKlass* ak = TypeArrayKlass::allocate(null_loader_data, type, sym, CHECK_NULL);
 
   // Call complete_create_array_klass after all instance variables have been initialized.
+  // 初始化TypeArrayKlass中的属性
   complete_create_array_klass(ak, ak->super(), ModuleEntryTable::javabase_moduleEntry(), CHECK_NULL);
 
   // Add all classes to our internal class loader list here,
@@ -70,16 +77,18 @@ TypeArrayKlass* TypeArrayKlass::allocate(ClassLoaderData* loader_data, BasicType
   assert(TypeArrayKlass::header_size() <= InstanceKlass::header_size(),
       "array klasses must be same size as InstanceKlass");
 
+  // TypeArrayKlass实例要占用的内存是多大
   int size = ArrayKlass::static_size(TypeArrayKlass::header_size());
-
+  // 重载new运算符为对象分配内存
   return new (loader_data, size, THREAD) TypeArrayKlass(type, name);
 }
 
 TypeArrayKlass::TypeArrayKlass(BasicType type, Symbol* name) : ArrayKlass(name, Kind) {
+  // 设置了layout_helper
   set_layout_helper(array_layout_helper(type));
   assert(is_array_klass(), "sanity");
   assert(is_typeArray_klass(), "sanity");
-
+  // 设置了max_length
   set_max_length(arrayOopDesc::max_array_length(type));
   assert(size() >= TypeArrayKlass::header_size(), "bad size");
 
