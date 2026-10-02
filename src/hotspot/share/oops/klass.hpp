@@ -177,6 +177,7 @@ class Klass : public Metadata {
   // Provide access the corresponding instance java.lang.ClassLoader.
   ClassLoaderData* _class_loader_data;
 
+  // 虚函数表的长度 Java的数组是引用类型 父类是Object 在Object类中有虚方法可以被继承和重写 这几个虚方法就体现在虚函数表的长度上
   int _vtable_len;              // vtable length. This field may be read very often when we
                                 // have lots of itable dispatches (e.g., lambdas and streams).
                                 // Keep it away from the beginning of a Klass to avoid cacheline

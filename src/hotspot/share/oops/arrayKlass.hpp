@@ -37,7 +37,9 @@ class ArrayKlass: public Klass {
  private:
   // If you add a new field that points to any metaspace object, you
   // must add this field to ArrayKlass::metaspace_pointers_do().
+  // 数组的维度 比如int[][][]的维度就是3
   int      _dimension;         // This is n'th-dimensional array.
+  // 数组的多维转换不单单是高维度到低维度 也需要低维度到高维度 所以每个维度都维护了两个指针 指向更高维度和更低维度 每个维度就像用双向链表串起来一样
   Klass* volatile _higher_dimension;  // Refers the (n+1)'th-dimensional array (if present).
   Klass* volatile _lower_dimension;   // Refers the (n-1)'th-dimensional array (if present).
 
